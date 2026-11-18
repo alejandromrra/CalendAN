@@ -28,7 +28,7 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
-  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
+  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')), setTheme]
 }
 
 // ¿Hay sesión iniciada? null = comprobando

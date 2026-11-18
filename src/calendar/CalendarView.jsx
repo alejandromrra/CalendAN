@@ -6,12 +6,19 @@ import {
 import { es } from 'date-fns/locale'
 import { BellRing, Check, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { color } from '../lib/colors'
+import useIsMobile from '../lib/useIsMobile'
+import MobileCalendar from './MobileCalendar'
 
-const HOUR = 56
-const wk = { weekStartsOn: 1, locale: es }
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+export const HOUR = 56
+export const wk = { weekStartsOn: 1, locale: es }
+export const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
 
-export default function CalendarView({ tasks, cursor, setCursor, mode, setMode, onCreate, onEdit }) {
+export default function CalendarView(props) {
+  const mobile = useIsMobile()
+  return mobile ? <MobileCalendar {...props} /> : <DesktopCalendar {...props} />
+}
+
+function DesktopCalendar({ tasks, cursor, setCursor, mode, setMode, onCreate, onEdit }) {
   const move = (dir) => {
     const fn = { month: [subMonths, addMonths], week: [subWeeks, addWeeks], day: [subDays, addDays] }[mode][dir > 0 ? 1 : 0]
     setCursor(fn(cursor, 1))
@@ -82,7 +89,7 @@ function weekTitle(d) {
 
 const weekDays = (d) => eachDayOfInterval({ start: startOfWeek(d, wk), end: endOfWeek(d, wk) })
 
-const tasksOn = (tasks, day) =>
+export const tasksOn = (tasks, day) =>
   tasks.filter((t) => isSameDay(new Date(t.start), day)).sort((a, b) => new Date(a.start) - new Date(b.start))
 
 // ---------- Mes ----------
@@ -178,7 +185,7 @@ function layout(list) {
   return out
 }
 
-function TimeGrid({ days, tasks, onCreate, onEdit }) {
+export function TimeGrid({ days, tasks, onCreate, onEdit, hideHeader = false, scrollRef }) {
   const scroller = useRef(null)
   const [now, setNow] = useState(new Date())
   useEffect(() => {
@@ -186,8 +193,11 @@ function TimeGrid({ days, tasks, onCreate, onEdit }) {
     return () => clearInterval(i)
   }, [])
   useEffect(() => {
-    if (scroller.current) scroller.current.scrollTop = HOUR * 7.5
-  }, [])
+    const now = new Date()
+    const target = days.some((d) => isSameDay(d, now)) ? now.getHours() - 1.5 : 7.5
+    if (scroller.current) scroller.current.scrollTop = HOUR * Math.max(0, target)
+    if (scrollRef) scrollRef.current = scroller.current
+  }, [scrollRef, days.map(String).join()])
 
   const allDay = days.map((d) => tasksOn(tasks, d).filter((t) => t.allDay))
   const hasAllDay = allDay.some((l) => l.length)
@@ -195,7 +205,7 @@ function TimeGrid({ days, tasks, onCreate, onEdit }) {
 
   return (
     <>
-      <div className="grid border-b border-ink-100 dark:border-ink-800" style={{ gridTemplateColumns: cols }}>
+      <div className={`grid border-b border-ink-100 dark:border-ink-800 ${hideHeader ? 'hidden' : ''}`} style={{ gridTemplateColumns: cols }}>
         <div />
         {days.map((d) => (
           <div key={d} className="flex flex-col items-center gap-0.5 py-2.5">

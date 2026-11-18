@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Bell, CheckCircle2, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
+import { Bell, CheckCircle2, Moon, Sun, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
 import { LogoMark } from './Logo'
 import { api, logout } from '../lib/api'
 import { importLegacyData, localLegacyData } from '../lib/store'
 import { disablePush, enablePush, pushState } from '../lib/push'
 
-export default function SettingsView({ onLogout }) {
+export default function SettingsView({ onLogout, theme, setTheme }) {
   const [wa, setWa] = useState(null)
   const [form, setForm] = useState({ phone: '', apikey: '' })
   const [saving, setSaving] = useState(null)
@@ -38,11 +38,26 @@ export default function SettingsView({ onLogout }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-5 pb-28 pt-5 sm:px-8">
-      <h1 className="mb-8 text-xl font-semibold tracking-tight sm:text-2xl">Ajustes</h1>
+    <div className="h-full overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+90px)] pt-3 sm:px-8 sm:pb-12 sm:pt-5">
+      <h1 className="mb-6 text-[28px] font-bold tracking-tight sm:mb-8 sm:text-2xl sm:font-semibold">Ajustes</h1>
 
       <div className="max-w-2xl space-y-6">
         <LegacyImport />
+
+        <section className="card flex items-center justify-between gap-4 p-5 md:hidden">
+          <span className="font-semibold tracking-tight">Apariencia</span>
+          <div className="grid grid-cols-2 rounded-xl bg-ink-100 p-0.5 dark:bg-ink-800">
+            {[['light', 'Claro', Sun], ['dark', 'Oscuro', Moon]].map(([k, l, Icon]) => (
+              <button
+                key={k}
+                onClick={() => setTheme(k)}
+                className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${theme === k ? 'bg-white shadow-sm dark:bg-ink-600' : 'text-ink-500'}`}
+              >
+                <Icon size={15} /> {l}
+              </button>
+            ))}
+          </div>
+        </section>
 
         <PushCard />
 

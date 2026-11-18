@@ -64,81 +64,107 @@ export default function TaskModal({ open, task, onClose, onSave, onDelete, whats
       open={open}
       onClose={onClose}
       title={task?.id ? 'Editar tarea' : 'Nueva tarea'}
-      footer={
-        <>
-          {task?.id && (
-            <button className="btn-ghost mr-auto text-rose-500 hover:bg-rose-500/10" onClick={() => onDelete(task.id)}>
-              <Trash2 size={16} /> Eliminar
-            </button>
-          )}
-          <button className="btn-ghost" onClick={onClose}>Cancelar</button>
-          <button className="btn-primary" onClick={submit} disabled={!f.title.trim()}>Guardar</button>
-        </>
+      primary={{ label: 'Guardar', onClick: submit, disabled: !f.title.trim() }}
+      extra={
+        task?.id && (
+          <button className="btn w-full text-rose-500 hover:bg-rose-500/10 sm:w-auto" onClick={() => onDelete(task.id)}>
+            <Trash2 size={16} /> Eliminar tarea
+          </button>
+        )
       }
     >
-      <form onSubmit={submit} className="space-y-5">
-        <input
-          autoFocus
-          value={f.title}
-          onChange={set('title')}
-          placeholder="Añade un título"
-          className="w-full border-0 bg-transparent text-2xl font-semibold tracking-tight outline-none placeholder:text-ink-300 dark:placeholder:text-ink-600"
-        />
+      <form onSubmit={submit} className="space-y-4">
+        <Group>
+          <input
+            autoFocus={!task?.id}
+            value={f.title}
+            onChange={set('title')}
+            placeholder="Título"
+            enterKeyHint="done"
+            className="w-full bg-transparent px-4 py-3.5 text-lg font-semibold tracking-tight outline-none placeholder:font-medium placeholder:text-ink-300 dark:placeholder:text-ink-600"
+          />
+          <textarea
+            rows={2}
+            value={f.description}
+            onChange={set('description')}
+            placeholder="Notas"
+            className="block w-full resize-none bg-transparent px-4 py-3 text-base outline-none placeholder:text-ink-400 sm:text-sm"
+          />
+        </Group>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="label">Día</label>
-            <input type="date" className="input" value={f.date} onChange={set('date')} />
-          </div>
+        <Group>
+          <Row label="Todo el día">
+            <Switch checked={f.allDay} onChange={(v) => setF({ ...f, allDay: v })} />
+          </Row>
+          <Row label="Día">
+            <input type="date" className="native-field" value={f.date} onChange={set('date')} />
+          </Row>
           {!f.allDay && (
             <>
-              <div>
-                <label className="label">Inicio</label>
-                <input type="time" className="input" value={f.startTime} onChange={set('startTime')} />
-              </div>
-              <div>
-                <label className="label">Fin</label>
-                <input type="time" className="input" value={f.endTime} onChange={set('endTime')} />
-              </div>
+              <Row label="Empieza">
+                <input type="time" className="native-field" value={f.startTime} onChange={set('startTime')} />
+              </Row>
+              <Row label="Termina">
+                <input type="time" className="native-field" value={f.endTime} onChange={set('endTime')} />
+              </Row>
             </>
           )}
-        </div>
+        </Group>
 
-        <label className="flex cursor-pointer items-center gap-3 text-sm">
-          <input type="checkbox" checked={f.allDay} onChange={set('allDay')} className="h-4 w-4 accent-brand-500" />
-          Todo el día
-        </label>
-
-        <div>
-          <label className="label">Notas</label>
-          <textarea rows={3} className="input h-auto py-2.5" value={f.description} onChange={set('description')} placeholder="Detalles, enlaces…" />
-        </div>
-
-        <div>
-          <label className="label flex items-center gap-1.5"><BellRing size={12} /> Aviso</label>
-          <select className="input" value={f.reminder} onChange={set('reminder')}>
-            {REMINDERS.map((r) => <option key={r.v} value={r.v}>{r.l}</option>)}
-          </select>
-          {!whatsappReady && f.reminder !== 'none' && (
-            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-              No tienes WhatsApp ni notificaciones activadas. Ve a Ajustes para activarlos.
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div>
-            <label className="label">Color</label>
+        <Group>
+          <Row label={<span className="flex items-center gap-2"><BellRing size={16} className="text-ink-400" /> Aviso</span>}>
+            <select className="native-field max-w-[60%] pr-1 text-right" value={f.reminder} onChange={set('reminder')}>
+              {REMINDERS.map((r) => <option key={r.v} value={r.v}>{r.l}</option>)}
+            </select>
+          </Row>
+          <div className="px-4 py-3.5">
             <ColorPicker value={f.color} onChange={set('color')} />
           </div>
           {task?.id && (
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input type="checkbox" checked={f.done} onChange={set('done')} className="h-4 w-4 accent-brand-500" />
-              Hecha
-            </label>
+            <Row label="Hecha">
+              <Switch checked={f.done} onChange={(v) => setF({ ...f, done: v })} />
+            </Row>
           )}
-        </div>
+        </Group>
+
+        {!whatsappReady && f.reminder !== 'none' && (
+          <p className="px-1 text-xs text-amber-600 dark:text-amber-400">
+            No tienes WhatsApp ni notificaciones activadas. Ve a Ajustes para activarlos.
+          </p>
+        )}
+        <button type="submit" hidden />
       </form>
     </Modal>
+  )
+}
+
+function Group({ children }) {
+  return (
+    <div className="divide-y divide-ink-100 overflow-hidden rounded-2xl bg-white dark:divide-ink-800 dark:bg-ink-850 sm:border sm:border-ink-200/70 sm:dark:border-ink-800">
+      {children}
+    </div>
+  )
+}
+
+function Row({ label, children }) {
+  return (
+    <div className="flex min-h-[52px] items-center justify-between gap-3 px-4 py-2">
+      <span className="text-base sm:text-sm">{label}</span>
+      {children}
+    </div>
+  )
+}
+
+function Switch({ checked, onChange }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors ${checked ? 'bg-brand-500' : 'bg-ink-200 dark:bg-ink-700'}`}
+    >
+      <span className={`absolute left-[2px] top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
+    </button>
   )
 }

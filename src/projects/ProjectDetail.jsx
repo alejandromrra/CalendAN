@@ -18,7 +18,7 @@ export default function ProjectDetail({ project, onChange, onBack, onDelete }) {
   const [confirm, setConfirm] = useState(false)
 
   return (
-    <div className="h-full overflow-y-auto pb-28 sm:pb-12">
+    <div className="h-full overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+90px)] sm:pb-12">
       {/* Cabecera */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 opacity-[.14] dark:opacity-25" style={{ background: `radial-gradient(80% 120% at 0% 0%, ${c.hex}, transparent 60%)` }} />
@@ -64,8 +64,8 @@ export default function ProjectDetail({ project, onChange, onBack, onDelete }) {
       </div>
 
       <EditProject open={editing} project={project} onClose={() => setEditing(false)} onSave={(p) => { onChange(p); setEditing(false) }} />
-      <Modal open={confirm} onClose={() => setConfirm(false)} title="¿Eliminar proyecto?" size="sm"
-        footer={<><button className="btn-ghost" onClick={() => setConfirm(false)}>Cancelar</button><button className="btn bg-rose-500 text-white hover:bg-rose-600" onClick={onDelete}>Eliminar</button></>}>
+      <Modal open={confirm} onClose={() => setConfirm(false)} title="¿Eliminar proyecto?" variant="alert"
+        primary={{ label: 'Eliminar', onClick: onDelete, danger: true }}>
         <p className="text-sm text-ink-500">Se borrará «{project.name}» y todo su contenido.</p>
       </Modal>
     </div>
@@ -252,7 +252,7 @@ function Items({ project, set }) {
       {uploadError && <p className="mt-3 text-sm text-rose-500">{uploadError}</p>}
 
       <Modal open={!!draft} onClose={() => setDraft(null)} title={draft?.type === 'link' ? 'Enlace' : 'Nota'}
-        footer={<><button className="btn-ghost" onClick={() => setDraft(null)}>Cancelar</button><button className="btn-primary" onClick={saveDraft}>Guardar</button></>}>
+        primary={{ label: 'Guardar', onClick: saveDraft }}>
         {draft && (
           <div className="space-y-3">
             <input autoFocus className="input" placeholder="Título" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
@@ -289,7 +289,7 @@ function EditProject({ open, project, onClose, onSave }) {
   const save = () => onSave({ ...f, github: f.github ? normalizeUrl(f.github) : '', url: f.url ? normalizeUrl(f.url) : '' })
   return (
     <Modal open={open} onClose={onClose} title="Editar proyecto"
-      footer={<><button className="btn-ghost" onClick={onClose}>Cancelar</button><button className="btn-primary" onClick={save} disabled={!f.name?.trim()}>Guardar</button></>}>
+      primary={{ label: 'Guardar', onClick: save, disabled: !f.name?.trim() }}>
       <div className="space-y-4">
         <div><label className="label">Nombre</label><input className="input" value={f.name} onChange={set('name')} /></div>
         <div><label className="label">Descripción</label><textarea rows={2} className="input h-auto py-2.5" value={f.description} onChange={set('description')} /></div>

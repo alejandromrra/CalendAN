@@ -11,7 +11,7 @@ import { api } from './lib/api'
 import { useLocalState, useProjects, useSession, useTasks, useTheme } from './lib/store'
 
 export default function App() {
-  const [theme, toggleTheme] = useTheme()
+  const [theme, toggleTheme, setTheme] = useTheme()
   const [authed, setAuthed] = useSession()
 
   if (authed === null)
@@ -21,10 +21,10 @@ export default function App() {
       </div>
     )
   if (!authed) return <LoginView onDone={() => setAuthed(true)} />
-  return <Shell theme={theme} toggleTheme={toggleTheme} onLogout={() => setAuthed(false)} />
+  return <Shell theme={theme} toggleTheme={toggleTheme} setTheme={setTheme} onLogout={() => setAuthed(false)} />
 }
 
-function Shell({ theme, toggleTheme, onLogout }) {
+function Shell({ theme, toggleTheme, setTheme, onLogout }) {
   const [view, setView] = useLocalState('an:view', 'calendar')
   const [mode, setMode] = useLocalState('an:calmode', 'week')
   const [cursor, setCursor] = useState(new Date())
@@ -57,10 +57,10 @@ function Shell({ theme, toggleTheme, onLogout }) {
 
       <main className="relative min-w-0 flex-1">
         {view === 'calendar' && (
-          <CalendarView tasks={tasks} cursor={cursor} setCursor={setCursor} mode={mode} setMode={setMode} onCreate={create} onEdit={setEditing} />
+          <CalendarView tasks={tasks} cursor={cursor} setCursor={setCursor} mode={mode} setMode={setMode} onCreate={create} onEdit={setEditing} onToggle={(t) => upsert({ ...t, done: !t.done })} />
         )}
         {view === 'projects' && <ProjectsView key={navKey} {...projects} />}
-        {view === 'settings' && <SettingsView onLogout={onLogout} />}
+        {view === 'settings' && <SettingsView onLogout={onLogout} theme={theme} setTheme={setTheme} />}
 
         {syncError && (
           <div className="absolute bottom-20 left-1/2 z-40 flex -translate-x-1/2 animate-pop items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-sm text-white shadow-lift dark:bg-white dark:text-ink-900 md:bottom-6">

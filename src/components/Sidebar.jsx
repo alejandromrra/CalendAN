@@ -42,18 +42,18 @@ export default function Sidebar({ view, setView, theme, toggleTheme, children })
         </button>
       </aside>
 
-      {/* Móvil */}
-      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-ink-200/70 bg-white/80 pt-2 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/80 md:hidden">
+      {/* Móvil: barra de pestañas estilo iOS */}
+      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-ink-200/60 bg-white/85 pt-1.5 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/85 md:hidden">
         {NAV.map(({ id, label, icon: Icon }) => (
-          <button key={id} onClick={() => setView(id)} className={`flex flex-col items-center gap-0.5 px-4 text-[11px] ${view === id ? 'text-brand-500' : 'text-ink-400'}`}>
-            <Icon size={20} strokeWidth={1.8} />
+          <button
+            key={id}
+            onClick={() => setView(id)}
+            className={`flex flex-col items-center gap-1 text-[10px] font-medium transition ${view === id ? 'text-brand-500' : 'text-ink-400'}`}
+          >
+            <Icon size={24} strokeWidth={view === id ? 2.1 : 1.7} />
             {label}
           </button>
         ))}
-        <button onClick={toggleTheme} className="flex flex-col items-center gap-0.5 px-4 text-[11px] text-ink-400">
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-          Tema
-        </button>
       </nav>
     </>
   )
