@@ -98,7 +98,7 @@ async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
             Channel::WhatsApp => whatsapp::send(st, &whatsapp_message(st, &r)).await,
             Channel::Push => {
                 let payload = json!({
-                    "title": format!("⏰ {}", r.title),
+                    "title": "Notificación",
                     "body": push_body(st, &r),
                     "tag": id,
                     "url": "/",
@@ -168,15 +168,10 @@ fn whatsapp_message(st: &AppState, r: &Reminder) -> String {
 }
 
 fn push_body(st: &AppState, r: &Reminder) -> String {
-    let mut body = format!("{} · {}", cap(&lead(r.minutes)), when(st, r));
+    let mut body = format!("⏰ {} — {} · {}", r.title, lead(r.minutes), when(st, r));
     if !r.description.is_empty() {
         body.push('\n');
         body.push_str(&r.description);
     }
     body
-}
-
-fn cap(s: &str) -> String {
-    let mut c = s.chars();
-    c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }

@@ -412,7 +412,7 @@ async fn put_whatsapp(_a: Auth, State(st): State<AppState>, Json(b): Json<Whatsa
 }
 
 async fn test_whatsapp(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
-    whatsapp::send(&st, "✅ AN: las notificaciones de WhatsApp funcionan correctamente.")
+    whatsapp::send(&st, "✅ CalendAN: las notificaciones de WhatsApp funcionan correctamente.")
         .await
         .map_err(|e| ApiError::Status(StatusCode::BAD_GATEWAY, e.to_string()))?;
     Ok(Json(json!({ "ok": true })))
@@ -473,7 +473,7 @@ async fn push_unsubscribe(_a: Auth, State(st): State<AppState>, Json(u): Json<Un
 }
 
 async fn push_test(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
-    let payload = json!({ "title": "Notificaciones activadas", "body": "✅ Así te llegarán los avisos de tus tareas.", "tag": "test", "url": "/" });
+    let payload = json!({ "title": "Notificación", "body": "✅ Así te llegarán los avisos de tus tareas.", "tag": "test", "url": "/" });
     match push::send_all(&st, payload).await? {
         (0, Some(e)) => Err(ApiError::Status(StatusCode::BAD_GATEWAY, format!("No se pudo enviar: {e}"))),
         (0, None) => Err(ApiError::bad_request("No hay ningún dispositivo con notificaciones activadas")),
