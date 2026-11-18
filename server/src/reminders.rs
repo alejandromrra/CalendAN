@@ -5,7 +5,9 @@ use std::time::Duration;
 use chrono::{DateTime, Datelike, Utc};
 use sqlx::Row;
 
-use crate::{whatsapp, AppState};
+use serde_json::json;
+
+use crate::{push, whatsapp, AppState};
 
 /// Si el servidor estuvo caído, no se envían avisos con más de 1 h de retraso
 const MAX_LATE_MINUTES: i64 = 60;
@@ -20,16 +22,37 @@ pub async fn run(st: AppState) {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Channel {
+    WhatsApp,
+    Push,
+}
+
+impl Channel {
+    fn name(self) -> &'static str {
+        match self {
+            Channel::WhatsApp => "whatsapp",
+            Channel::Push => "push",
+        }
+    }
+}
+
 async fn check(st: &AppState) -> anyhow::Result<()> {
     // Limpieza: imágenes subidas que nunca se llegaron a guardar en un proyecto
     sqlx::query("DELETE FROM files WHERE project_id IS NULL AND created_at < now() - interval '1 day'")
         .execute(&st.db)
         .await?;
 
-    if whatsapp::config(st).await?.is_none() {
-        return Ok(());
+    if whatsapp::config(st).await?.is_some() {
+        check_channel(st, Channel::WhatsApp).await?;
     }
+    if push::subscription_count(&st.db).await? > 0 {
+        check_channel(st, Channel::Push).await?;
+    }
+    Ok(())
+}
 
+async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
     let due = sqlx::query(
         "SELECT t.id, t.title, t.description, t.start_at, t.all_day, t.reminder,
                 t.start_at - make_interval(mins => t.reminder) AS remind_at
@@ -38,9 +61,11 @@ async fn check(st: &AppState) -> anyhow::Result<()> {
            AND t.start_at - make_interval(mins => t.reminder) <= now()
            AND t.start_at - make_interval(mins => t.reminder) > now() - make_interval(mins => $1)
            AND NOT EXISTS (SELECT 1 FROM reminders_sent r
-                           WHERE r.task_id = t.id AND r.remind_at = t.start_at - make_interval(mins => t.reminder))",
+                           WHERE r.task_id = t.id AND r.channel = $2
+                             AND r.remind_at = t.start_at - make_interval(mins => t.reminder))",
     )
     .bind(MAX_LATE_MINUTES as i32)
+    .bind(ch.name())
     .fetch_all(&st.db)
     .await?;
 
@@ -48,31 +73,50 @@ async fn check(st: &AppState) -> anyhow::Result<()> {
         let id: String = row.get("id");
         let remind_at: DateTime<Utc> = row.get("remind_at");
         // Se marca antes de enviar para no duplicar si hay varias instancias
-        let claimed = sqlx::query("INSERT INTO reminders_sent (task_id, remind_at) VALUES ($1,$2) ON CONFLICT DO NOTHING")
-            .bind(&id)
-            .bind(remind_at)
-            .execute(&st.db)
-            .await?
-            .rows_affected();
+        let claimed = sqlx::query(
+            "INSERT INTO reminders_sent (task_id, remind_at, channel) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING",
+        )
+        .bind(&id)
+        .bind(remind_at)
+        .bind(ch.name())
+        .execute(&st.db)
+        .await?
+        .rows_affected();
         if claimed == 0 {
             continue;
         }
 
-        let msg = message(
-            st,
-            row.get("title"),
-            row.get("description"),
-            row.get("start_at"),
-            row.get("all_day"),
-            row.get("reminder"),
-        );
-        match whatsapp::send(st, &msg).await {
-            Ok(()) => tracing::info!("WhatsApp enviado: {}", row.get::<String, _>("title")),
+        let title: String = row.get("title");
+        let r = Reminder {
+            title: &title,
+            description: row.get("description"),
+            start: row.get("start_at"),
+            all_day: row.get("all_day"),
+            minutes: row.get("reminder"),
+        };
+        let result = match ch {
+            Channel::WhatsApp => whatsapp::send(st, &whatsapp_message(st, &r)).await,
+            Channel::Push => {
+                let payload = json!({
+                    "title": format!("⏰ {}", r.title),
+                    "body": push_body(st, &r),
+                    "tag": id,
+                    "url": "/",
+                });
+                match push::send_all(st, payload).await? {
+                    (0, Some(e)) => Err(anyhow::anyhow!(e)),
+                    _ => Ok(()),
+                }
+            }
+        };
+        match result {
+            Ok(()) => tracing::info!("aviso {} enviado: {title}", ch.name()),
             Err(e) => {
-                tracing::warn!("WhatsApp falló ({e:#}); se reintentará");
-                sqlx::query("DELETE FROM reminders_sent WHERE task_id = $1 AND remind_at = $2")
+                tracing::warn!("aviso {} falló ({e:#}); se reintentará", ch.name());
+                sqlx::query("DELETE FROM reminders_sent WHERE task_id = $1 AND remind_at = $2 AND channel = $3")
                     .bind(&id)
                     .bind(remind_at)
+                    .bind(ch.name())
                     .execute(&st.db)
                     .await?;
             }
@@ -81,30 +125,58 @@ async fn check(st: &AppState) -> anyhow::Result<()> {
     Ok(())
 }
 
+struct Reminder<'a> {
+    title: &'a str,
+    description: String,
+    start: DateTime<Utc>,
+    all_day: bool,
+    minutes: i32,
+}
+
 const DAYS: [&str; 7] = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const MONTHS: [&str; 12] = [
     "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
 ];
 
-fn message(st: &AppState, title: String, description: String, start: DateTime<Utc>, all_day: bool, reminder: i32) -> String {
-    let local = start.with_timezone(&st.tz);
-    let lead = match reminder {
+fn lead(minutes: i32) -> String {
+    match minutes {
         0 => "ahora".to_string(),
         m if m % 1440 == 0 => format!("en {} día(s)", m / 1440),
         m if m % 60 == 0 => format!("en {} h", m / 60),
         m => format!("en {m} min"),
-    };
+    }
+}
+
+fn when(st: &AppState, r: &Reminder) -> String {
+    let local = r.start.with_timezone(&st.tz);
     let day = format!(
         "{} {} de {}",
         DAYS[local.weekday().num_days_from_monday() as usize],
         local.day(),
         MONTHS[local.month0() as usize]
     );
-    let when = if all_day { day } else { format!("{day}, {}", local.format("%H:%M")) };
-    let mut msg = format!("⏰ *{title}* — {lead}\n🗓 {when}");
-    if !description.is_empty() {
+    if r.all_day { day } else { format!("{day}, {}", local.format("%H:%M")) }
+}
+
+fn whatsapp_message(st: &AppState, r: &Reminder) -> String {
+    let mut msg = format!("⏰ *{}* — {}\n🗓 {}", r.title, lead(r.minutes), when(st, r));
+    if !r.description.is_empty() {
         msg.push_str("\n\n");
-        msg.push_str(&description);
+        msg.push_str(&r.description);
     }
     msg
+}
+
+fn push_body(st: &AppState, r: &Reminder) -> String {
+    let mut body = format!("{} · {}", cap(&lead(r.minutes)), when(st, r));
+    if !r.description.is_empty() {
+        body.push('\n');
+        body.push_str(&r.description);
+    }
+    body
+}
+
+fn cap(s: &str) -> String {
+    let mut c = s.chars();
+    c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }

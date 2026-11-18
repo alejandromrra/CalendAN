@@ -33,3 +33,7 @@
 .md ul { @apply mb-3 list-disc space-y-1 pl-5 text-sm text-ink-600 marker:text-brand-400 dark:text-ink-300; }
 .md a { @apply text-brand-500 underline decoration-brand-500/30 underline-offset-2; }
 .md code { @apply rounded bg-ink-100 px-1 py-0.5 text-[12px] dark:bg-ink-800; }
+
+/* Zonas seguras del iPhone (notch y barra de inicio) */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }

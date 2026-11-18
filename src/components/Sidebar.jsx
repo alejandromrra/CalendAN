@@ -43,7 +43,7 @@ export default function Sidebar({ view, setView, theme, toggleTheme, children })
       </aside>
 
       {/* Móvil */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-ink-200/70 bg-white/80 py-2 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/80 md:hidden">
+      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-ink-200/70 bg-white/80 pt-2 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/80 md:hidden">
         {NAV.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setView(id)} className={`flex flex-col items-center gap-0.5 px-4 text-[11px] ${view === id ? 'text-brand-500' : 'text-ink-400'}`}>
             <Icon size={20} strokeWidth={1.8} />

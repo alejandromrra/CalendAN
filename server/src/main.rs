@@ -4,6 +4,7 @@
 mod api;
 mod auth;
 mod error;
+mod push;
 mod reminders;
 mod whatsapp;
 
@@ -27,6 +28,7 @@ pub struct Inner {
     pub secure_cookies: bool,
     pub tz: chrono_tz::Tz,
     pub http: reqwest::Client,
+    pub vapid: push::Vapid,
     /// Avisa a los dispositivos conectados de que algo ha cambiado
     pub events: broadcast::Sender<&'static str>,
     /// Intentos fallidos de login recientes (freno contra fuerza bruta)
@@ -68,12 +70,15 @@ async fn main() -> anyhow::Result<()> {
 
     let tz: chrono_tz::Tz = env_or("TIMEZONE", "Europe/Madrid").parse().map_err(|_| anyhow::anyhow!("TIMEZONE no válida"))?;
 
+    let vapid = push::Vapid::load(&db).await?;
+
     let state = AppState(Arc::new(Inner {
         db,
         password_hash: Sha256::digest(password.as_bytes()).into(),
         secure_cookies: env_or("SECURE_COOKIES", "true") != "false",
         tz,
         http: reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build()?,
+        vapid,
         events: broadcast::channel(64).0,
         login_failures: Default::default(),
     }));

@@ -24,7 +24,7 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use crate::{
     auth::Auth,
     error::{ApiError, ApiResult},
-    whatsapp, AppState,
+    push, whatsapp, AppState,
 };
 
 const MAX_FILE: usize = 15 * 1024 * 1024;
@@ -40,6 +40,8 @@ pub fn routes() -> Router<AppState> {
         .route("/api/files/{id}", get(get_file))
         .route("/api/settings/whatsapp", get(get_whatsapp).put(put_whatsapp))
         .route("/api/whatsapp/test", post(test_whatsapp))
+        .route("/api/push", get(push_status).post(push_subscribe).delete(push_unsubscribe))
+        .route("/api/push/test", post(push_test))
 }
 
 fn new_id() -> String {
@@ -414,4 +416,67 @@ async fn test_whatsapp(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<V
         .await
         .map_err(|e| ApiError::Status(StatusCode::BAD_GATEWAY, e.to_string()))?;
     Ok(Json(json!({ "ok": true })))
+}
+
+// ---------------------------------------------------------------- notificaciones push
+
+async fn push_status(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
+    Ok(Json(json!({ "publicKey": st.vapid.public, "devices": push::subscription_count(&st.db).await? })))
+}
+
+#[derive(Deserialize)]
+struct SubKeys {
+    p256dh: String,
+    auth: String,
+}
+
+#[derive(Deserialize)]
+struct Subscription {
+    endpoint: String,
+    keys: Option<SubKeys>,
+    #[serde(default)]
+    device: String,
+}
+
+async fn push_subscribe(_a: Auth, State(st): State<AppState>, Json(s): Json<Subscription>) -> ApiResult<Json<Value>> {
+    let keys = s.keys.ok_or_else(|| ApiError::bad_request("Suscripción incompleta"))?;
+    let url = reqwest::Url::parse(&s.endpoint).map_err(|_| ApiError::bad_request("endpoint no válido"))?;
+    // Solo servicios push reales (https), nunca direcciones internas
+    let allow_http = std::env::var("PUSH_ALLOW_HTTP").is_ok_and(|v| v == "true");
+    if url.scheme() != "https" && !allow_http {
+        return Err(ApiError::bad_request("endpoint no válido"));
+    }
+    if push::encrypt(&keys.p256dh, &keys.auth, b"").is_err() {
+        return Err(ApiError::bad_request("Claves de suscripción no válidas"));
+    }
+    sqlx::query(
+        "INSERT INTO push_subscriptions (endpoint, p256dh, auth, device) VALUES ($1,$2,$3,$4)
+         ON CONFLICT (endpoint) DO UPDATE SET p256dh=$2, auth=$3, device=$4",
+    )
+    .bind(&s.endpoint)
+    .bind(&keys.p256dh)
+    .bind(&keys.auth)
+    .bind(s.device.chars().take(100).collect::<String>())
+    .execute(&st.db)
+    .await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+#[derive(Deserialize)]
+struct Unsubscribe {
+    endpoint: String,
+}
+
+async fn push_unsubscribe(_a: Auth, State(st): State<AppState>, Json(u): Json<Unsubscribe>) -> ApiResult<Json<Value>> {
+    sqlx::query("DELETE FROM push_subscriptions WHERE endpoint = $1").bind(&u.endpoint).execute(&st.db).await?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+async fn push_test(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
+    let payload = json!({ "title": "AN", "body": "✅ Las notificaciones funcionan correctamente.", "tag": "test", "url": "/" });
+    match push::send_all(&st, payload).await? {
+        (0, Some(e)) => Err(ApiError::Status(StatusCode::BAD_GATEWAY, format!("No se pudo enviar: {e}"))),
+        (0, None) => Err(ApiError::bad_request("No hay ningún dispositivo con notificaciones activadas")),
+        (n, _) => Ok(Json(json!({ "ok": true, "sent": n }))),
+    }
 }

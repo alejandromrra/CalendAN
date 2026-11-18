@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, CircleAlert, CloudUpload, LogOut, MessageCircle, Send } from 'lucide-react'
+import { Bell, CheckCircle2, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
 import { LogoMark } from './Logo'
 import { api, logout } from '../lib/api'
 import { importLegacyData, localLegacyData } from '../lib/store'
+import { disablePush, enablePush, pushState } from '../lib/push'
 
 export default function SettingsView({ onLogout }) {
   const [wa, setWa] = useState(null)
@@ -42,6 +43,8 @@ export default function SettingsView({ onLogout }) {
 
       <div className="max-w-2xl space-y-6">
         <LegacyImport />
+
+        <PushCard />
 
         <section className="card p-6">
           <div className="mb-5 flex items-center gap-3">
@@ -90,12 +93,95 @@ export default function SettingsView({ onLogout }) {
             <div className="font-semibold">AN</div>
             <div className="text-sm text-ink-400">Tus datos se guardan en tu servidor y se sincronizan entre todos tus dispositivos.</div>
           </div>
-          <button className="btn-outline" onClick={async () => { await logout(); onLogout() }}>
+          <button className="btn-outline" onClick={async () => { await disablePush().catch(() => {}); await logout(); onLogout() }}>
             <LogOut size={15} /> Cerrar sesión
           </button>
         </section>
       </div>
     </div>
+  )
+}
+
+function PushCard() {
+  const [state, setState] = useState(null)
+  const [devices, setDevices] = useState(null)
+  const [msg, setMsg] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    setState(await pushState().catch(() => 'unsupported'))
+    api('/api/push').then((r) => setDevices(r.devices)).catch(() => {})
+  }
+  useEffect(() => { refresh() }, [])
+
+  const run = (fn, ok) => async () => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      await fn()
+      if (ok) setMsg({ ok })
+    } catch (e) {
+      setMsg({ error: e.message })
+    }
+    setBusy(false)
+    refresh()
+  }
+
+  return (
+    <section className="card p-6">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500"><Bell size={20} /></div>
+        <div>
+          <h2 className="font-semibold tracking-tight">Notificaciones</h2>
+          <p className="text-sm text-ink-400">Recibe los avisos de tus tareas en este dispositivo.</p>
+        </div>
+      </div>
+
+      <Status
+        ok={state === 'on'}
+        label="Este dispositivo"
+        detail={{ on: 'Activadas', off: 'Desactivadas', denied: 'Bloqueadas', install: 'Instala la app primero', unsupported: 'No compatible' }[state] || 'Comprobando…'}
+      />
+      {devices != null && (
+        <div className="flex items-center justify-between border-t border-ink-100 py-3 text-sm dark:border-ink-800">
+          <span className="font-medium">Dispositivos con notificaciones</span>
+          <span className="text-ink-500">{devices}</span>
+        </div>
+      )}
+
+      {state === 'install' && (
+        <div className="mt-4 rounded-xl bg-ink-50 p-4 text-sm dark:bg-ink-800/50">
+          <p className="mb-3 font-medium">Para recibir notificaciones en el iPhone:</p>
+          <ol className="space-y-2.5 text-ink-600 dark:text-ink-300">
+            <li>1. Abre esta página en <b>Safari</b>.</li>
+            <li>2. Toca <Share size={15} className="inline align-[-2px] text-brand-500" /> <b>Compartir</b>.</li>
+            <li>3. Elige <SquarePlus size={15} className="inline align-[-2px] text-brand-500" /> <b>Añadir a pantalla de inicio</b>.</li>
+            <li>4. Abre <b>AN</b> desde el icono, inicia sesión y vuelve aquí.</li>
+          </ol>
+        </div>
+      )}
+      {state === 'denied' && (
+        <p className="mt-3 text-sm text-ink-500">Las has bloqueado. Actívalas en los ajustes del sistema (en iPhone: Ajustes → Notificaciones → AN).</p>
+      )}
+      {state === 'unsupported' && <p className="mt-3 text-sm text-ink-500">Este navegador no admite notificaciones push.</p>}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {state === 'off' && (
+          <button className="btn-primary" disabled={busy} onClick={run(enablePush, 'Notificaciones activadas en este dispositivo.')}>
+            <Bell size={15} /> Activar notificaciones
+          </button>
+        )}
+        {state === 'on' && (
+          <>
+            <button className="btn-primary" disabled={busy} onClick={run(() => api('/api/push/test', { method: 'POST' }), 'Enviada. Debería llegarte en unos segundos.')}>
+              <Send size={15} /> Enviar notificación de prueba
+            </button>
+            <button className="btn-ghost" disabled={busy} onClick={run(disablePush)}>Desactivar</button>
+          </>
+        )}
+      </div>
+      <Msg s={msg} />
+    </section>
   )
 }
 

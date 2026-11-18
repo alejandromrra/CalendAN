@@ -36,14 +36,16 @@ function Shell({ theme, toggleTheme, onLogout }) {
   const [whatsappReady, setWhatsappReady] = useState(true)
 
   useEffect(() => {
-    api('/api/settings/whatsapp').then((s) => setWhatsappReady(s.configured)).catch(() => {})
+    Promise.all([api('/api/settings/whatsapp'), api('/api/push')])
+      .then(([w, p]) => setWhatsappReady(w.configured || p.devices > 0))
+      .catch(() => {})
   }, [view])
 
   const create = (start) => setEditing({ start: start.toISOString(), end: new Date(start.getTime() + 3600_000).toISOString(), reminder: 0 })
   const syncError = taskError || projects.error
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden">
+    <div className="pt-safe flex h-[100dvh] overflow-hidden">
       <Sidebar view={view} setView={go} theme={theme} toggleTheme={toggleTheme}>
         {view === 'calendar' && (
           <>

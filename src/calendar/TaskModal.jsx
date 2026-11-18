@@ -115,13 +115,13 @@ export default function TaskModal({ open, task, onClose, onSave, onDelete, whats
         </div>
 
         <div>
-          <label className="label flex items-center gap-1.5"><BellRing size={12} /> Aviso por WhatsApp</label>
+          <label className="label flex items-center gap-1.5"><BellRing size={12} /> Aviso</label>
           <select className="input" value={f.reminder} onChange={set('reminder')}>
             {REMINDERS.map((r) => <option key={r.v} value={r.v}>{r.l}</option>)}
           </select>
           {!whatsappReady && f.reminder !== 'none' && (
             <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-              WhatsApp aún no está configurado. Ve a Ajustes para activarlo.
+              No tienes WhatsApp ni notificaciones activadas. Ve a Ajustes para activarlos.
             </p>
           )}
         </div>

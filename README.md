@@ -28,6 +28,16 @@ Los datos viven en tu servidor y se sincronizan al momento entre todos tus dispo
 
 Para actualizar, sube los cambios a GitHub y pulsa *Deploy* (o activa el auto-deploy).
 
+## Instalar en el iPhone
+
+1. Abre la URL de la app en **Safari** e inicia sesión.
+2. *Compartir → Añadir a pantalla de inicio*.
+3. Abre **AN** desde el icono, inicia sesión otra vez (la app instalada tiene su propia sesión)
+   y en **Ajustes → Notificaciones** pulsa «Activar notificaciones».
+
+Funciona igual en Android y en Chrome/Edge de escritorio. Los avisos llegan por notificación y por WhatsApp.
+
+
 ## Desarrollo local
 
 Necesitas Node 20+, Rust y un Postgres (por ejemplo con Docker):
@@ -44,6 +54,7 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 - **Sesión**: una sola contraseña (`AN_PASSWORD`). Cada dispositivo tiene su propia sesión; 10 intentos fallidos bloquean el login 15 min.
 - **Sincronización**: cada cambio se guarda en Postgres y el servidor avisa al resto de dispositivos (Server-Sent Events), que se actualizan solos.
 - **Avisos**: cada 30 s el servidor busca tareas cuyo aviso toca y envía el WhatsApp una sola vez. Si el servidor estuvo apagado, los avisos con más de 1 h de retraso se descartan.
+- **Notificaciones push**: Web Push estándar (VAPID + cifrado aes128gcm) implementado en Rust; las claves se generan solas la primera vez. Opcional: `VAPID_SUBJECT=mailto:tu@correo`.
 - **Imágenes**: se guardan en Postgres y solo se pueden ver con sesión iniciada.
 
 ## API
@@ -56,4 +67,6 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 | POST/GET | `/api/files` · `/api/files/{id}` | Imágenes |
 | GET/PUT | `/api/settings/whatsapp` | Número y apikey de CallMeBot |
 | POST | `/api/whatsapp/test` | Mensaje de prueba |
+| GET/POST/DELETE | `/api/push` | Clave pública y suscripciones push |
+| POST | `/api/push/test` | Notificación de prueba |
 | GET | `/api/events` | Cambios en tiempo real |
