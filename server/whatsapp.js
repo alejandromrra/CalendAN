@@ -2,10 +2,23 @@
 //  - CallMeBot: gratis, ideal para avisos a tu propio número.
 //  - Twilio: oficial (WhatsApp Business API), de pago.
 
+// La configuración guardada desde Ajustes tiene prioridad sobre el .env
+let getSaved = () => ({})
+export const useSavedConfig = (fn) => (getSaved = fn)
+
+// Acepta "665 85 15 21", "0034665851521"... y lo deja como +34665851521
+export function normalizePhone(raw) {
+  let p = String(raw || '').replace(/[\s\-().]/g, '')
+  if (!p) return ''
+  if (p.startsWith('00')) p = '+' + p.slice(2)
+  if (!p.startsWith('+')) p = (/^[6789]\d{8}$/.test(p) ? '+34' : '+') + p
+  return p
+}
+
 const env = () => ({
-  provider: (process.env.WHATSAPP_PROVIDER || 'callmebot').toLowerCase(),
-  phone: (process.env.WHATSAPP_PHONE || '').replace(/\s/g, ''),
-  callmebotKey: process.env.CALLMEBOT_APIKEY,
+  provider: (getSaved().provider || process.env.WHATSAPP_PROVIDER || 'callmebot').toLowerCase(),
+  phone: normalizePhone(getSaved().phone || process.env.WHATSAPP_PHONE),
+  callmebotKey: getSaved().apikey || process.env.CALLMEBOT_APIKEY,
   twilioSid: process.env.TWILIO_ACCOUNT_SID,
   twilioToken: process.env.TWILIO_AUTH_TOKEN,
   twilioFrom: process.env.TWILIO_WHATSAPP_FROM,
@@ -48,7 +61,9 @@ export async function sendWhatsApp(text) {
   url.searchParams.set('phone', e.phone)
   url.searchParams.set('text', text)
   url.searchParams.set('apikey', e.callmebotKey)
-  const res = await fetch(url)
+  const res = await fetch(url).catch((err) => {
+    throw new Error(`No se pudo conectar con CallMeBot (${err.cause?.code || err.message}). ¿Hay conexión a internet?`)
+  })
   const out = await res.text()
   if (!res.ok || /error/i.test(out)) throw new Error(`CallMeBot ${res.status}: ${out.slice(0, 200)}`)
 }

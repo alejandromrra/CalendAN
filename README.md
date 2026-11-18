@@ -28,8 +28,8 @@ así que un pequeño servidor (`server/`) guarda las tareas y revisa cada 30 s c
 **CallMeBot (gratis, recomendado para uso personal)**
 1. Añade a tus contactos el número que aparece en https://www.callmebot.com/blog/free-api-whatsapp-messages/
 2. Envíale `I allow callmebot to send me messages` y te responderá con tu apikey.
-3. En `.env`: `WHATSAPP_PHONE=+34XXXXXXXXX` y `CALLMEBOT_APIKEY=...`
-4. En la app → Ajustes → «Enviar mensaje de prueba».
+3. En la app → Ajustes, pega tu número y la apikey y pulsa «Guardar» (también vale ponerlos en `.env`).
+4. Pulsa «Enviar mensaje de prueba».
 
 **Twilio**: `WHATSAPP_PROVIDER=twilio` + `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.
 

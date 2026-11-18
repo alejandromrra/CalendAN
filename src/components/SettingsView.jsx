@@ -4,7 +4,27 @@ import { LogoMark } from './Logo'
 
 export default function SettingsView({ server, refreshHealth }) {
   const [state, setState] = useState(null)
+  const [form, setForm] = useState({ phone: '', apikey: '' })
+  const [saving, setSaving] = useState(null)
   const wa = server.whatsapp
+
+  const saveConfig = async (e) => {
+    e.preventDefault()
+    setSaving({ loading: true })
+    try {
+      const r = await fetch('/api/whatsapp/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const j = await r.json()
+      setSaving(r.ok ? { ok: 'Guardado. Pulsa «Enviar mensaje de prueba».' } : { error: j.error })
+      if (r.ok) setForm({ phone: '', apikey: '' })
+    } catch {
+      setSaving({ error: 'No se puede conectar con el servidor.' })
+    }
+    refreshHealth()
+  }
 
   const test = async () => {
     setState({ loading: true })
@@ -35,6 +55,22 @@ export default function SettingsView({ server, refreshHealth }) {
           <Status ok={server.online} label="Servidor de recordatorios" detail={server.online ? 'Conectado' : 'Desconectado — ejecuta npm run dev'} />
           <Status ok={!!wa?.configured} label="WhatsApp" detail={wa?.configured ? `${wa.provider} → ${wa.phone}` : 'Sin configurar'} />
 
+          <form onSubmit={saveConfig} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+              <label className="label">Tu número</label>
+              <input className="input" inputMode="tel" placeholder="+34 600 000 000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Apikey de CallMeBot</label>
+              <input className="input" placeholder="1234567" value={form.apikey} onChange={(e) => setForm({ ...form, apikey: e.target.value })} />
+            </div>
+            <button className="btn-outline h-10" disabled={!server.online || !form.phone || !form.apikey || saving?.loading}>
+              {wa?.configured ? 'Cambiar' : 'Guardar'}
+            </button>
+          </form>
+          {saving?.ok && <p className="mt-2 text-sm text-emerald-600">{saving.ok}</p>}
+          {saving?.error && <p className="mt-2 text-sm text-rose-500">{saving.error}</p>}
+
           <button className="btn-primary mt-5" onClick={test} disabled={!wa?.configured || state?.loading}>
             <Send size={15} /> {state?.loading ? 'Enviando…' : 'Enviar mensaje de prueba'}
           </button>
@@ -47,8 +83,7 @@ export default function SettingsView({ server, refreshHealth }) {
               <li>Guarda en tus contactos el número de <b>CallMeBot</b> que aparece en <a className="text-brand-500 underline" href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noreferrer">su web</a>.</li>
               <li>Envíale por WhatsApp: <code className="rounded bg-ink-200/60 px-1 dark:bg-ink-700">I allow callmebot to send me messages</code></li>
               <li>Te responderá con tu <b>apikey</b>.</li>
-              <li>Copia <code className="rounded bg-ink-200/60 px-1 dark:bg-ink-700">.env.example</code> a <code className="rounded bg-ink-200/60 px-1 dark:bg-ink-700">.env</code> y rellena <code>WHATSAPP_PHONE</code> y <code>CALLMEBOT_APIKEY</code>.</li>
-              <li>Reinicia <code>npm run dev</code> y pulsa «Enviar mensaje de prueba».</li>
+              <li>Pega tu número y la apikey arriba, pulsa «Guardar» y luego «Enviar mensaje de prueba».</li>
             </ol>
             <p className="mt-3 text-xs text-ink-400">¿Prefieres la API oficial? Pon <code>WHATSAPP_PROVIDER=twilio</code> y tus credenciales de Twilio.</p>
           </details>

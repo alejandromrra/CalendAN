@@ -5,7 +5,7 @@ import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { sendWhatsApp, providerStatus } from './whatsapp.js'
+import { sendWhatsApp, providerStatus, useSavedConfig, normalizePhone } from './whatsapp.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DATA_FILE = path.join(__dirname, 'data.json')
@@ -28,6 +28,8 @@ function save(db) {
 
 let db = load()
 db.sent ??= {}
+db.config ??= {}
+useSavedConfig(() => db.config)
 
 const app = express()
 app.use(express.json({ limit: '2mb' }))
@@ -48,6 +50,15 @@ app.put('/api/tasks', (req, res) => {
   }
   save(db)
   res.json({ ok: true })
+})
+
+// Guardar número y apikey de CallMeBot desde Ajustes
+app.put('/api/whatsapp/config', (req, res) => {
+  const { phone, apikey } = req.body || {}
+  if (!phone || !apikey) return res.status(400).json({ error: 'Faltan el número o la apikey' })
+  db.config = { provider: 'callmebot', phone: normalizePhone(phone), apikey: String(apikey).trim() }
+  save(db)
+  res.json({ ok: true, whatsapp: providerStatus() })
 })
 
 app.post('/api/whatsapp/test', async (_req, res) => {
