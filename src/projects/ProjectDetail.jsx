@@ -7,7 +7,8 @@ import ColorPicker from '../components/ColorPicker'
 import Github from '../components/GithubIcon'
 import Modal from '../components/Modal'
 import { color } from '../lib/colors'
-import { fileToDataUrl, uid } from '../lib/store'
+import { compressImage, uid } from '../lib/store'
+import { uploadImage } from '../lib/api'
 import { githubRepo, hostOf, normalizeUrl, renderMarkdown, screenshotUrl } from './utils'
 
 export default function ProjectDetail({ project, onChange, onBack, onDelete }) {
@@ -176,10 +177,23 @@ function Items({ project, set }) {
   const [draft, setDraft] = useState(null) // { type, title, content, id? }
   const items = project.items || []
 
+  const [uploading, setUploading] = useState(0)
+  const [uploadError, setUploadError] = useState(null)
   const addFiles = async (files) => {
     const imgs = [...files].filter((f) => f.type.startsWith('image/'))
+    if (!imgs.length) return
+    setUploading(imgs.length)
+    setUploadError(null)
     const next = []
-    for (const f of imgs) next.push({ id: uid(), type: 'image', title: f.name.replace(/\.[^.]+$/, ''), content: await fileToDataUrl(f), createdAt: Date.now() })
+    for (const f of imgs) {
+      try {
+        const { url } = await uploadImage(await compressImage(f))
+        next.push({ id: uid(), type: 'image', title: f.name.replace(/\.[^.]+$/, ''), content: url, createdAt: Date.now() })
+      } catch (e) {
+        setUploadError(`No se pudo subir «${f.name}»: ${e.message}`)
+      }
+      setUploading((n) => n - 1)
+    }
     if (next.length) set({ items: [...items, ...next] })
   }
   const saveDraft = () => {
@@ -231,10 +245,11 @@ function Items({ project, set }) {
           </div>
         ))}
         <button onClick={() => fileRef.current.click()} className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-ink-200 text-xs text-ink-400 transition hover:border-brand-400 hover:text-brand-500 dark:border-ink-700">
-          <ImagePlus size={22} strokeWidth={1.5} />
-          Arrastra tus diseños aquí
+          <ImagePlus size={22} strokeWidth={1.5} className={uploading ? 'animate-pulse' : ''} />
+          {uploading ? `Subiendo ${uploading}…` : 'Arrastra tus diseños aquí'}
         </button>
       </div>
+      {uploadError && <p className="mt-3 text-sm text-rose-500">{uploadError}</p>}
 
       <Modal open={!!draft} onClose={() => setDraft(null)} title={draft?.type === 'link' ? 'Enlace' : 'Nota'}
         footer={<><button className="btn-ghost" onClick={() => setDraft(null)}>Cancelar</button><button className="btn-primary" onClick={saveDraft}>Guardar</button></>}>

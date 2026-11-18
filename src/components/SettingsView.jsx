@@ -1,41 +1,39 @@
-import { useState } from 'react'
-import { CheckCircle2, CircleAlert, MessageCircle, Send } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, CircleAlert, CloudUpload, LogOut, MessageCircle, Send } from 'lucide-react'
 import { LogoMark } from './Logo'
+import { api, logout } from '../lib/api'
+import { importLegacyData, localLegacyData } from '../lib/store'
 
-export default function SettingsView({ server, refreshHealth }) {
-  const [state, setState] = useState(null)
+export default function SettingsView({ onLogout }) {
+  const [wa, setWa] = useState(null)
   const [form, setForm] = useState({ phone: '', apikey: '' })
   const [saving, setSaving] = useState(null)
-  const wa = server.whatsapp
+  const [testing, setTesting] = useState(null)
 
-  const saveConfig = async (e) => {
+  useEffect(() => {
+    api('/api/settings/whatsapp').then(setWa).catch(() => setWa({ configured: false }))
+  }, [])
+
+  const save = async (e) => {
     e.preventDefault()
     setSaving({ loading: true })
     try {
-      const r = await fetch('/api/whatsapp/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const j = await r.json()
-      setSaving(r.ok ? { ok: 'Guardado. Pulsa «Enviar mensaje de prueba».' } : { error: j.error })
-      if (r.ok) setForm({ phone: '', apikey: '' })
-    } catch {
-      setSaving({ error: 'No se puede conectar con el servidor.' })
+      setWa(await api('/api/settings/whatsapp', { method: 'PUT', body: form }))
+      setForm({ phone: '', apikey: '' })
+      setSaving({ ok: 'Guardado. Pulsa «Enviar mensaje de prueba».' })
+    } catch (err) {
+      setSaving({ error: err.message })
     }
-    refreshHealth()
   }
 
   const test = async () => {
-    setState({ loading: true })
+    setTesting({ loading: true })
     try {
-      const r = await fetch('/api/whatsapp/test', { method: 'POST' })
-      const j = await r.json()
-      setState(r.ok ? { ok: 'Mensaje enviado. Revisa tu WhatsApp.' } : { error: j.error })
-    } catch {
-      setState({ error: 'No se puede conectar con el servidor.' })
+      await api('/api/whatsapp/test', { method: 'POST' })
+      setTesting({ ok: 'Mensaje enviado. Revisa tu WhatsApp.' })
+    } catch (err) {
+      setTesting({ error: err.message })
     }
-    refreshHealth()
   }
 
   return (
@@ -43,6 +41,8 @@ export default function SettingsView({ server, refreshHealth }) {
       <h1 className="mb-8 text-xl font-semibold tracking-tight sm:text-2xl">Ajustes</h1>
 
       <div className="max-w-2xl space-y-6">
+        <LegacyImport />
+
         <section className="card p-6">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-500"><MessageCircle size={20} /></div>
@@ -52,10 +52,9 @@ export default function SettingsView({ server, refreshHealth }) {
             </div>
           </div>
 
-          <Status ok={server.online} label="Servidor de recordatorios" detail={server.online ? 'Conectado' : 'Desconectado — ejecuta npm run dev'} />
-          <Status ok={!!wa?.configured} label="WhatsApp" detail={wa?.configured ? `${wa.provider} → ${wa.phone}` : 'Sin configurar'} />
+          <Status ok={!!wa?.configured} label="WhatsApp" detail={wa == null ? 'Comprobando…' : wa.configured ? `CallMeBot → ${wa.phone}` : 'Sin configurar'} />
 
-          <form onSubmit={saveConfig} className="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <div>
               <label className="label">Tu número</label>
               <input className="input" inputMode="tel" placeholder="+34 600 000 000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -64,41 +63,83 @@ export default function SettingsView({ server, refreshHealth }) {
               <label className="label">Apikey de CallMeBot</label>
               <input className="input" placeholder="1234567" value={form.apikey} onChange={(e) => setForm({ ...form, apikey: e.target.value })} />
             </div>
-            <button className="btn-outline h-10" disabled={!server.online || !form.phone || !form.apikey || saving?.loading}>
+            <button className="btn-outline h-10" disabled={!form.phone || !form.apikey || saving?.loading}>
               {wa?.configured ? 'Cambiar' : 'Guardar'}
             </button>
           </form>
-          {saving?.ok && <p className="mt-2 text-sm text-emerald-600">{saving.ok}</p>}
-          {saving?.error && <p className="mt-2 text-sm text-rose-500">{saving.error}</p>}
+          <Msg s={saving} />
 
-          <button className="btn-primary mt-5" onClick={test} disabled={!wa?.configured || state?.loading}>
-            <Send size={15} /> {state?.loading ? 'Enviando…' : 'Enviar mensaje de prueba'}
+          <button className="btn-primary mt-5" onClick={test} disabled={!wa?.configured || testing?.loading}>
+            <Send size={15} /> {testing?.loading ? 'Enviando…' : 'Enviar mensaje de prueba'}
           </button>
-          {state?.ok && <p className="mt-3 text-sm text-emerald-600">{state.ok}</p>}
-          {state?.error && <p className="mt-3 text-sm text-rose-500">{state.error}</p>}
+          <Msg s={testing} />
 
-          <details className="mt-6 rounded-xl bg-ink-50 p-4 text-sm dark:bg-ink-800/50" open={!wa?.configured}>
-            <summary className="cursor-pointer font-medium">Cómo activarlo (2 minutos, gratis)</summary>
+          <details className="mt-6 rounded-xl bg-ink-50 p-4 text-sm dark:bg-ink-800/50" open={wa && !wa.configured}>
+            <summary className="cursor-pointer font-medium">Cómo conseguir la apikey (gratis)</summary>
             <ol className="mt-3 list-decimal space-y-2 pl-5 text-ink-600 dark:text-ink-300">
               <li>Guarda en tus contactos el número de <b>CallMeBot</b> que aparece en <a className="text-brand-500 underline" href="https://www.callmebot.com/blog/free-api-whatsapp-messages/" target="_blank" rel="noreferrer">su web</a>.</li>
-              <li>Envíale por WhatsApp: <code className="rounded bg-ink-200/60 px-1 dark:bg-ink-700">I allow callmebot to send me messages</code></li>
-              <li>Te responderá con tu <b>apikey</b>.</li>
-              <li>Pega tu número y la apikey arriba, pulsa «Guardar» y luego «Enviar mensaje de prueba».</li>
+              <li>Envíale por WhatsApp el mensaje de activación que indica la web.</li>
+              <li>Te responderá con tu <b>apikey</b>: pégala arriba junto a tu número.</li>
             </ol>
-            <p className="mt-3 text-xs text-ink-400">¿Prefieres la API oficial? Pon <code>WHATSAPP_PROVIDER=twilio</code> y tus credenciales de Twilio.</p>
           </details>
         </section>
 
-        <section className="card flex items-center gap-4 p-6">
+        <section className="card flex flex-wrap items-center gap-4 p-6">
           <LogoMark className="h-12 w-12 rounded-[14px]" />
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="font-semibold">AN</div>
-            <div className="text-sm text-ink-400">Tus datos se guardan en este navegador. Las tareas se copian al servidor para poder avisarte.</div>
+            <div className="text-sm text-ink-400">Tus datos se guardan en tu servidor y se sincronizan entre todos tus dispositivos.</div>
           </div>
+          <button className="btn-outline" onClick={async () => { await logout(); onLogout() }}>
+            <LogOut size={15} /> Cerrar sesión
+          </button>
         </section>
       </div>
     </div>
   )
+}
+
+function LegacyImport() {
+  const [data, setData] = useState(localLegacyData)
+  const [state, setState] = useState(null)
+  if (!data && !state?.ok) return null
+  const run = async () => {
+    setState({ loading: true })
+    try {
+      await importLegacyData(data)
+      setData(null)
+      setState({ ok: 'Datos importados. Ya están disponibles en todos tus dispositivos.' })
+    } catch (e) {
+      setState({ error: e.message })
+    }
+  }
+  return (
+    <section className="card border-brand-300/60 bg-brand-500/[.04] p-6 dark:border-brand-500/30">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500"><CloudUpload size={20} /></div>
+        <div className="flex-1">
+          <h2 className="font-semibold tracking-tight">Datos de la versión anterior</h2>
+          {data ? (
+            <>
+              <p className="text-sm text-ink-400">
+                Este navegador tiene {data.tasks.length} tareas y {data.projects.length} proyectos guardados de antes. Súbelos al servidor para no perderlos.
+              </p>
+              <button className="btn-primary mt-4" onClick={run} disabled={state?.loading}>
+                <CloudUpload size={15} /> {state?.loading ? 'Importando…' : 'Importar al servidor'}
+              </button>
+            </>
+          ) : null}
+          <Msg s={state} />
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Msg({ s }) {
+  if (s?.ok) return <p className="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{s.ok}</p>
+  if (s?.error) return <p className="mt-3 text-sm text-rose-500">{s.error}</p>
+  return null
 }
 
 function Status({ ok, label, detail }) {

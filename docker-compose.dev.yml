@@ -1,0 +1,12 @@
+# Postgres para desarrollo local:  docker compose -f docker-compose.dev.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: an
+      POSTGRES_PASSWORD: an
+      POSTGRES_DB: an
+    ports: ["5432:5432"]
+    volumes: [an-db:/var/lib/postgresql/data]
+volumes:
+  an-db:

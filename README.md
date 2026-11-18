@@ -1,41 +1,59 @@
 # ΛИ — AN
 
 Calendario minimalista con avisos por **WhatsApp** y un espacio de **proyectos** con carpetas estilo Apple.
+Los datos viven en tu servidor y se sincronizan al momento entre todos tus dispositivos.
 
-React · Tailwind CSS · Vite · Node (Express)
+- **Web**: React · Tailwind CSS · Vite (`src/`)
+- **Servidor**: Rust · Axum · Postgres (`server/`)
 
-## Arrancar
+## Publicar en Easypanel
+
+1. **Base de datos** — En tu proyecto de Easypanel: *+ Service → Postgres*. Llámalo `an-db`.
+   Copia su **Internal Connection URL** (empieza por `postgres://`).
+2. **App** — *+ Service → App*, llámala `an`.
+   - *Source*: GitHub → este repositorio y la rama a desplegar.
+     (Si el repositorio es privado, conecta antes tu GitHub en *Settings → GitHub* de Easypanel.)
+   - *Build*: **Dockerfile** (ruta `Dockerfile`).
+   - *Environment*:
+     ```
+     DATABASE_URL=<la Internal Connection URL del paso 1>
+     AN_PASSWORD=<una contraseña larga para entrar en la app>
+     TIMEZONE=Europe/Madrid
+     ```
+   - *Domains*: deja el dominio que te propone Easypanel y pon el puerto **3001**.
+   - Pulsa **Deploy**.
+3. Abre la URL, entra con tu contraseña y en **Ajustes**:
+   - pulsa «Importar al servidor» si tenías datos de la versión anterior en ese navegador,
+   - pega tu número y tu apikey de CallMeBot y envía el mensaje de prueba.
+
+Para actualizar, sube los cambios a GitHub y pulsa *Deploy* (o activa el auto-deploy).
+
+## Desarrollo local
+
+Necesitas Node 20+, Rust y un Postgres (por ejemplo con Docker):
 
 ```bash
+docker compose -f docker-compose.dev.yml up -d
+cp .env.example .env        # pon AN_PASSWORD
 npm install
-cp .env.example .env   # rellena tu número y tu apikey (ver abajo)
-npm run dev            # web en http://localhost:5173 + servidor de avisos en :3001
+npm run dev                 # web en http://localhost:5173 + servidor en :3001
 ```
 
-## Funciones
+## Cómo funciona
 
-- **Calendario**: vistas Día / Semana / Mes, mini calendario, próximas tareas, colores y tareas de todo el día.
-- **Avisos por WhatsApp**: cada tarea puede avisarte a la hora, 5/15/30/60 min antes o 1 día antes.
-- **Proyectos**: cada proyecto es una carpeta tipo macOS con previews de lo que contiene (web, diseños, notas, GitHub, informe).
-  Dentro: descripción, informe en Markdown, enlace a GitHub, preview en vivo de la web (escritorio / móvil) y diseños por arrastrar y soltar.
-- **Modo claro y oscuro**, color corporativo índigo `#635BF5`.
+- **Sesión**: una sola contraseña (`AN_PASSWORD`). Cada dispositivo tiene su propia sesión; 10 intentos fallidos bloquean el login 15 min.
+- **Sincronización**: cada cambio se guarda en Postgres y el servidor avisa al resto de dispositivos (Server-Sent Events), que se actualizan solos.
+- **Avisos**: cada 30 s el servidor busca tareas cuyo aviso toca y envía el WhatsApp una sola vez. Si el servidor estuvo apagado, los avisos con más de 1 h de retraso se descartan.
+- **Imágenes**: se guardan en Postgres y solo se pueden ver con sesión iniciada.
 
-## WhatsApp
+## API
 
-El navegador no puede enviar WhatsApp por sí solo y los avisos tienen que llegar aunque la web esté cerrada,
-así que un pequeño servidor (`server/`) guarda las tareas y revisa cada 30 s cuáles toca avisar.
-
-**CallMeBot (gratis, recomendado para uso personal)**
-1. Añade a tus contactos el número que aparece en https://www.callmebot.com/blog/free-api-whatsapp-messages/
-2. Envíale `I allow callmebot to send me messages` y te responderá con tu apikey.
-3. En la app → Ajustes, pega tu número y la apikey y pulsa «Guardar» (también vale ponerlos en `.env`).
-4. Pulsa «Enviar mensaje de prueba».
-
-**Twilio**: `WHATSAPP_PROVIDER=twilio` + `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.
-
-> Para que los avisos lleguen siempre, el servidor tiene que estar encendido (tu ordenador, una Raspberry, Railway, Render…).
-> En producción: `npm run build && npm start` sirve la web y el servidor juntos.
-
-## Datos
-
-Las tareas y proyectos se guardan en el navegador (`localStorage`); las tareas se copian al servidor (`server/data.json`) para los avisos.
+| Método | Ruta | |
+|---|---|---|
+| POST | `/api/auth/login` · `/api/auth/logout` | Sesión (cookie y token `Bearer`) |
+| GET/PUT/DELETE | `/api/tasks` · `/api/tasks/{id}` | Tareas |
+| GET/PUT/DELETE | `/api/projects` · `/api/projects/{id}` | Proyectos con sus elementos |
+| POST/GET | `/api/files` · `/api/files/{id}` | Imágenes |
+| GET/PUT | `/api/settings/whatsapp` | Número y apikey de CallMeBot |
+| POST | `/api/whatsapp/test` | Mensaje de prueba |
+| GET | `/api/events` | Cambios en tiempo real |
