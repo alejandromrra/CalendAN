@@ -69,11 +69,11 @@ export default function ProjectDetail({ project, onChange, onBack, onDelete }) {
   ]
 
   return (
-    <div className="h-full overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+90px)] sm:pb-16">
+    <div className="relative h-full overflow-y-auto overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+90px)] sm:pb-16">
       {/* Fondo de color del proyecto */}
-      <div className="pointer-events-none relative">
-        <div className="absolute -top-40 left-[-10%] h-80 w-[70%] rounded-full opacity-25 blur-3xl dark:opacity-20" style={{ background: c.hex }} />
-        <div className="absolute -top-32 right-[-5%] h-64 w-[40%] rounded-full opacity-15 blur-3xl dark:opacity-10" style={{ background: c.hex2 }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[30rem] overflow-hidden">
+        <div className="absolute -top-40 left-0 h-80 w-[70%] rounded-full opacity-25 blur-3xl dark:opacity-20" style={{ background: c.hex }} />
+        <div className="absolute -top-32 right-0 h-64 w-[40%] rounded-full opacity-15 blur-3xl dark:opacity-10" style={{ background: c.hex2 }} />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-8">

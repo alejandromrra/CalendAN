@@ -155,7 +155,7 @@ function MonthView({ tasks, cursor, setCursor, onEdit, onToggle }) {
   const list = tasksOn(tasks, cursor)
 
   return (
-    <div className="h-full overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+150px)]">
+    <div className="h-full overflow-y-auto overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+150px)]">
       <div className="px-3" {...swipe}>
         <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-ink-400">
           {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => <span key={d} className="py-1.5">{d}</span>)}
@@ -220,7 +220,7 @@ function Agenda({ tasks, onEdit, onToggle }) {
     )
 
   return (
-    <div className="h-full overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+150px)]">
+    <div className="h-full overflow-y-auto overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+150px)]">
       {groups.map(([k, list]) => (
         <section key={k} className="mb-5">
           <div className="sticky top-0 z-10 -mx-4 bg-ink-50/90 px-5 py-1.5 text-sm font-semibold text-ink-500 backdrop-blur dark:bg-ink-950/90">

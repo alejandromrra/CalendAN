@@ -38,7 +38,7 @@ export default function SettingsView({ onLogout, theme, setTheme }) {
   }
 
   return (
-    <div className="h-full overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+90px)] pt-3 sm:px-8 sm:pb-12 sm:pt-5">
+    <div className="h-full overflow-y-auto overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+90px)] pt-3 sm:px-8 sm:pb-12 sm:pt-5">
       <h1 className="mb-6 text-[28px] font-bold tracking-tight sm:mb-8 sm:text-2xl sm:font-semibold">Ajustes</h1>
 
       <div className="max-w-2xl space-y-6">

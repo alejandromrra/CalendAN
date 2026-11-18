@@ -20,7 +20,7 @@ export default function ProjectsView({ projects, upsert, remove }) {
     .sort((a, b) => b.updatedAt - a.updatedAt)
 
   return (
-    <div className="h-full overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+90px)] pt-3 sm:px-8 sm:pb-10 sm:pt-5">
+    <div className="h-full overflow-y-auto overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+90px)] pt-3 sm:px-8 sm:pb-10 sm:pt-5">
       <header className="mb-8 flex flex-wrap items-center gap-3 sm:mb-10">
         <div className="mr-auto">
           <h1 className="text-[28px] font-bold tracking-tight sm:text-2xl sm:font-semibold">Proyectos</h1>
