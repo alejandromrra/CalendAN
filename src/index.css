@@ -26,13 +26,16 @@
 .animate-fade { animation: fade .2s ease both }
 
 /* Informe renderizado */
-.md h1 { @apply mb-3 mt-1 text-xl font-semibold tracking-tight; }
-.md h2 { @apply mb-2 mt-5 text-base font-semibold tracking-tight first:mt-0; }
-.md h3 { @apply mb-1 mt-4 text-sm font-semibold; }
-.md p { @apply mb-2 text-sm leading-relaxed text-ink-600 dark:text-ink-300; }
-.md ul { @apply mb-3 list-disc space-y-1 pl-5 text-sm text-ink-600 marker:text-brand-400 dark:text-ink-300; }
+.md { @apply max-w-[72ch] text-[15px] leading-7 text-ink-600 dark:text-ink-300; }
+.md > :first-child { margin-top: 0 !important; }
+.md h1 { @apply mb-3 mt-8 text-2xl font-bold tracking-tight text-ink-900 dark:text-white; }
+.md h2 { @apply mb-2 mt-8 text-lg font-semibold tracking-tight text-ink-900 dark:text-white; }
+.md h3 { @apply mb-1.5 mt-6 text-base font-semibold text-ink-900 dark:text-white; }
+.md p { @apply mb-3; }
+.md ul { @apply mb-4 list-disc space-y-1 pl-5 marker:text-brand-400; }
+.md strong { @apply font-semibold text-ink-900 dark:text-white; }
 .md a { @apply text-brand-500 underline decoration-brand-500/30 underline-offset-2; }
-.md code { @apply rounded bg-ink-100 px-1 py-0.5 text-[12px] dark:bg-ink-800; }
+.md code { @apply rounded bg-ink-100 px-1 py-0.5 text-[13px] dark:bg-ink-800; }
 
 /* Zonas seguras del iPhone (notch y barra de inicio) */
 .pt-safe { padding-top: env(safe-area-inset-top); }
