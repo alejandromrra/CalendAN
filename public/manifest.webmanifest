@@ -1,6 +1,6 @@
 {
-  "name": "AN — Calendario & Proyectos",
-  "short_name": "AN",
+  "name": "CalendAN",
+  "short_name": "CalendAN",
   "description": "Calendario con avisos y espacio de proyectos",
   "lang": "es",
   "start_url": "/",

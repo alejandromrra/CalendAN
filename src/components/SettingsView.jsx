@@ -105,7 +105,7 @@ export default function SettingsView({ onLogout, theme, setTheme }) {
         <section className="card flex flex-wrap items-center gap-4 p-6">
           <LogoMark className="h-12 w-12 rounded-[14px]" />
           <div className="min-w-0 flex-1">
-            <div className="font-semibold">AN</div>
+            <div className="font-semibold">CalendAN</div>
             <div className="text-sm text-ink-400">Tus datos se guardan en tu servidor y se sincronizan entre todos tus dispositivos.</div>
           </div>
           <button className="btn-outline" onClick={async () => { await disablePush().catch(() => {}); await logout(); onLogout() }}>
@@ -171,12 +171,12 @@ function PushCard() {
             <li>1. Abre esta página en <b>Safari</b>.</li>
             <li>2. Toca <Share size={15} className="inline align-[-2px] text-brand-500" /> <b>Compartir</b>.</li>
             <li>3. Elige <SquarePlus size={15} className="inline align-[-2px] text-brand-500" /> <b>Añadir a pantalla de inicio</b>.</li>
-            <li>4. Abre <b>AN</b> desde el icono, inicia sesión y vuelve aquí.</li>
+            <li>4. Abre <b>CalendAN</b> desde el icono, inicia sesión y vuelve aquí.</li>
           </ol>
         </div>
       )}
       {state === 'denied' && (
-        <p className="mt-3 text-sm text-ink-500">Las has bloqueado. Actívalas en los ajustes del sistema (en iPhone: Ajustes → Notificaciones → AN).</p>
+        <p className="mt-3 text-sm text-ink-500">Las has bloqueado. Actívalas en los ajustes del sistema (en iPhone: Ajustes → Notificaciones → CalendAN).</p>
       )}
       {state === 'unsupported' && <p className="mt-3 text-sm text-ink-500">Este navegador no admite notificaciones push.</p>}
 

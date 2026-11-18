@@ -15,7 +15,7 @@ export default function Sidebar({ view, setView, theme, toggleTheme, children })
         <div className="mb-8 flex items-center gap-3 px-2">
           <LogoMark className="h-9 w-9 shadow-md shadow-brand-500/30 rounded-[11px]" />
           <div className="leading-tight">
-            <div className="text-[15px] font-semibold tracking-tight">AN</div>
+            <div className="text-[15px] font-semibold tracking-tight">CalendAN</div>
             <div className="text-xs text-ink-400">Calendario & Proyectos</div>
           </div>
         </div>
