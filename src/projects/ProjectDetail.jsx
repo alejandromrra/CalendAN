@@ -10,7 +10,7 @@ import Github from '../components/GithubIcon'
 import Modal from '../components/Modal'
 import { color } from '../lib/colors'
 import { compressImage, uid } from '../lib/store'
-import { uploadImage } from '../lib/api'
+import { assetUrl, uploadImage } from '../lib/api'
 import { githubRepo, hostOf, normalizeUrl, renderMarkdown, screenshotUrl } from './utils'
 
 const TEMPLATE = `## Idea
@@ -546,7 +546,7 @@ function Items({ project, set }) {
               </button>
               {it.type === 'image' && (
                 <button onClick={() => setLightbox(it)} className="block w-full">
-                  <img src={it.content} alt={it.title} loading="lazy" className="w-full" />
+                  <img src={assetUrl(it.content)} alt={it.title} loading="lazy" className="w-full" />
                   <div className="truncate px-3 py-2 text-left text-xs font-medium text-ink-500">{it.title}</div>
                 </button>
               )}
@@ -593,7 +593,7 @@ function Items({ project, set }) {
 
       {lightbox && (
         <div className="fixed inset-0 z-50 flex animate-fade flex-col items-center justify-center gap-4 bg-ink-950/90 p-6 backdrop-blur" onClick={() => setLightbox(null)}>
-          <img src={lightbox.content} alt="" className="max-h-[85%] max-w-full animate-pop rounded-xl shadow-2xl" />
+          <img src={assetUrl(lightbox.content)} alt="" className="max-h-[85%] max-w-full animate-pop rounded-xl shadow-2xl" />
           <div className="text-sm text-white/70">{lightbox.title}</div>
         </div>
       )}

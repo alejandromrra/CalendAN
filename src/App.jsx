@@ -7,7 +7,9 @@ import { LogoMark } from './components/Logo'
 import CalendarView, { MiniCalendar, Upcoming } from './calendar/CalendarView'
 import TaskModal from './calendar/TaskModal'
 import ProjectsView from './projects/ProjectsView'
-import { api } from './lib/api'
+import { api, isDesktop } from './lib/api'
+import { subscribe } from './lib/live'
+import { firstRunSetup, notifyNative } from './lib/desktop'
 import { useLocalState, useProjects, useSession, useTasks, useTheme } from './lib/store'
 
 export default function App() {
@@ -35,9 +37,16 @@ function Shell({ theme, toggleTheme, setTheme, onLogout }) {
   const projects = useProjects()
   const [whatsappReady, setWhatsappReady] = useState(true)
 
+  // App de escritorio: los avisos llegan en directo y se muestran como notificación nativa
+  useEffect(() => {
+    if (!isDesktop) return
+    firstRunSetup()
+    return subscribe('reminder', notifyNative)
+  }, [])
+
   useEffect(() => {
     Promise.all([api('/api/settings/whatsapp'), api('/api/push')])
-      .then(([w, p]) => setWhatsappReady(w.configured || p.devices > 0))
+      .then(([w, p]) => setWhatsappReady(w.configured || p.devices > 0 || isDesktop))
       .catch(() => {})
   }, [view])
 

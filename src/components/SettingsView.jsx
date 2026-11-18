@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Bell, CheckCircle2, Moon, Sun, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
 import { LogoMark } from './Logo'
-import { api, logout } from '../lib/api'
+import { api, getServer, isDesktop, logout } from '../lib/api'
+import { autostartEnabled, canNotify, setAutostart } from '../lib/desktop'
 import { importLegacyData, localLegacyData } from '../lib/store'
 import { disablePush, enablePush, pushState } from '../lib/push'
 
@@ -59,7 +60,7 @@ export default function SettingsView({ onLogout, theme, setTheme }) {
           </div>
         </section>
 
-        <PushCard />
+        {isDesktop ? <DesktopCard /> : <PushCard />}
 
         <section className="card p-6">
           <div className="mb-5 flex items-center gap-3">
@@ -114,6 +115,74 @@ export default function SettingsView({ onLogout, theme, setTheme }) {
         </section>
       </div>
     </div>
+  )
+}
+
+function DesktopCard() {
+  const [perm, setPerm] = useState(null)
+  const [auto, setAuto] = useState(null)
+  const [msg, setMsg] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    canNotify().then(setPerm).catch(() => setPerm(false))
+    autostartEnabled().then(setAuto).catch(() => setAuto(false))
+  }, [])
+
+  const test = async () => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      await api('/api/push/test', { method: 'POST' })
+      setMsg({ ok: 'Enviada. Debería aparecer en unos segundos.' })
+    } catch (e) {
+      setMsg({ error: e.message })
+    }
+    setBusy(false)
+  }
+
+  const toggleAuto = async () => {
+    try {
+      await setAutostart(!auto)
+      setAuto(!auto)
+    } catch (e) {
+      setMsg({ error: e.message })
+    }
+  }
+
+  return (
+    <section className="card p-6">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500/10 text-brand-500"><Bell size={20} /></div>
+        <div>
+          <h2 className="font-semibold tracking-tight">Notificaciones de escritorio</h2>
+          <p className="text-sm text-ink-400">CalendAN sigue en la bandeja del sistema al cerrar la ventana y te avisa de tus tareas.</p>
+        </div>
+      </div>
+
+      <Status ok={!!perm} label="Notificaciones" detail={perm == null ? 'Comprobando…' : perm ? 'Permitidas' : 'Bloqueadas en el sistema'} />
+      <div className="flex items-center justify-between border-t border-ink-100 py-3 text-sm dark:border-ink-800">
+        <span className="font-medium">Abrir al iniciar el ordenador</span>
+        <button
+          role="switch"
+          aria-checked={!!auto}
+          onClick={toggleAuto}
+          disabled={auto == null}
+          className={`relative h-[26px] w-[44px] rounded-full transition-colors ${auto ? 'bg-brand-500' : 'bg-ink-200 dark:bg-ink-700'}`}
+        >
+          <span className={`absolute left-[2px] top-[2px] h-[22px] w-[22px] rounded-full bg-white shadow transition-transform ${auto ? 'translate-x-[18px]' : ''}`} />
+        </button>
+      </div>
+      <div className="flex items-center justify-between gap-4 border-t border-ink-100 py-3 text-sm dark:border-ink-800">
+        <span className="font-medium">Servidor</span>
+        <span className="truncate text-ink-500">{getServer().replace(/^https?:\/\//, '')}</span>
+      </div>
+
+      <button className="btn-primary mt-4" onClick={test} disabled={busy}>
+        <Send size={15} /> Enviar notificación de prueba
+      </button>
+      <Msg s={msg} />
+    </section>
   )
 }
 

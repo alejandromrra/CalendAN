@@ -1,4 +1,4 @@
-# ΛИ — AN
+# ΛИ — CalendAN
 
 Calendario minimalista con avisos por **WhatsApp** y un espacio de **proyectos** con carpetas estilo Apple.
 Los datos viven en tu servidor y se sincronizan al momento entre todos tus dispositivos.
@@ -38,6 +38,27 @@ Para actualizar, sube los cambios a GitHub y pulsa *Deploy* (o activa el auto-de
 Funciona igual en Android y en Chrome/Edge de escritorio. Los avisos llegan por notificación y por WhatsApp.
 
 
+## App de escritorio (Windows y Linux)
+
+Hecha con **Tauri** (Rust): la misma interfaz empaquetada en una app nativa que se conecta a tu servidor.
+
+- Vive en la **bandeja del sistema**: al cerrar la ventana sigue abierta y te avisa de las tareas con notificaciones nativas.
+- Se abre sola al **iniciar el ordenador** (se puede desactivar en Ajustes).
+- La primera vez pide la dirección de tu servidor y tu contraseña.
+
+**Descargar los instaladores**: en GitHub → *Actions* → **App de escritorio** → *Run workflow*.
+Cuando termine (~15 min) aparecerán en *Releases*:
+
+| Sistema | Archivo |
+|---|---|
+| Windows | `CalendAN_x.y.z_x64-setup.exe` (o `.msi`) |
+| Ubuntu / Debian | `CalendAN_x.y.z_amd64.deb` |
+| Fedora | `CalendAN-x.y.z-1.x86_64.rpm` |
+| Cualquier Linux | `CalendAN_x.y.z_amd64.AppImage` |
+
+Compilar en local: `npm run desktop` (desarrollo) o `npm run desktop:build` (instalador).
+En Linux necesitas `libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev`.
+
 ## Desarrollo local
 
 Necesitas Node 20+, Rust y un Postgres (por ejemplo con Docker):
@@ -55,6 +76,7 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 - **Sincronización**: cada cambio se guarda en Postgres y el servidor avisa al resto de dispositivos (Server-Sent Events), que se actualizan solos.
 - **Avisos**: cada 30 s el servidor busca tareas cuyo aviso toca y envía el WhatsApp una sola vez. Si el servidor estuvo apagado, los avisos con más de 1 h de retraso se descartan.
 - **Notificaciones push**: Web Push estándar (VAPID + cifrado aes128gcm) implementado en Rust; las claves se generan solas la primera vez. Opcional: `VAPID_SUBJECT=mailto:tu@correo`.
+- **Escritorio**: la app de escritorio escucha `/api/events?client=desktop` y el servidor le manda los avisos en directo; solo se marcan como enviados si hay alguna app abierta.
 - **Imágenes**: se guardan en Postgres y solo se pueden ver con sesión iniciada.
 
 ## API

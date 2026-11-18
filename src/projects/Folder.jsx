@@ -1,6 +1,7 @@
 import { Globe, StickyNote, FileText } from 'lucide-react'
 import Github from '../components/GithubIcon'
 import { color } from '../lib/colors'
+import { assetUrl } from '../lib/api'
 import { githubRepo, screenshotUrl } from './utils'
 
 // Carpeta estilo macOS con "hojas" asomando que muestran el contenido real del proyecto
@@ -86,7 +87,7 @@ export function collectPreviews(project) {
 }
 
 function Paper({ p }) {
-  if (p.type === 'image') return <img src={p.src} alt="" className="h-full w-full object-cover" />
+  if (p.type === 'image') return <img src={assetUrl(p.src)} alt="" className="h-full w-full object-cover" />
   if (p.type === 'site')
     return (
       <div className="flex h-full flex-col">

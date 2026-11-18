@@ -3,3 +3,4 @@ dist
 server/target
 .env
 .git
+src-tauri

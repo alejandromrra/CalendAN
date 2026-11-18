@@ -7,7 +7,7 @@ use sqlx::Row;
 
 use serde_json::json;
 
-use crate::{push, whatsapp, AppState};
+use crate::{push, whatsapp, AppState, Live};
 
 /// Si el servidor estuvo caído, no se envían avisos con más de 1 h de retraso
 const MAX_LATE_MINUTES: i64 = 60;
@@ -26,6 +26,7 @@ pub async fn run(st: AppState) {
 enum Channel {
     WhatsApp,
     Push,
+    Desktop,
 }
 
 impl Channel {
@@ -33,6 +34,7 @@ impl Channel {
         match self {
             Channel::WhatsApp => "whatsapp",
             Channel::Push => "push",
+            Channel::Desktop => "desktop",
         }
     }
 }
@@ -48,6 +50,10 @@ async fn check(st: &AppState) -> anyhow::Result<()> {
     }
     if push::subscription_count(&st.db).await? > 0 {
         check_channel(st, Channel::Push).await?;
+    }
+    // Solo se marca como enviado a escritorio si hay alguna app abierta en ese momento
+    if st.desktop_count() > 0 {
+        check_channel(st, Channel::Desktop).await?;
     }
     Ok(())
 }
@@ -96,6 +102,14 @@ async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
         };
         let result = match ch {
             Channel::WhatsApp => whatsapp::send(st, &whatsapp_message(st, &r)).await,
+            Channel::Desktop => {
+                let _ = st.events.send(Live::Reminder(json!({
+                    "title": "Notificación",
+                    "body": push_body(st, &r),
+                    "tag": id,
+                })));
+                Ok(())
+            }
             Channel::Push => {
                 let payload = json!({
                     "title": "Notificación",

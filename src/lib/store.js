@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, onUnauthorized } from './api'
+import { subscribe } from './live'
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
 
@@ -46,11 +47,10 @@ function useLiveReload(kind, reload) {
   const ref = useRef(reload)
   ref.current = reload
   useEffect(() => {
-    const es = new EventSource('/api/events', { withCredentials: true })
-    es.addEventListener('change', (e) => e.data === kind && ref.current())
+    const off = subscribe('change', (what) => what === kind && ref.current())
     const onFocus = () => ref.current()
     window.addEventListener('focus', onFocus)
-    return () => { es.close(); window.removeEventListener('focus', onFocus) }
+    return () => { off(); window.removeEventListener('focus', onFocus) }
   }, [kind])
 }
 

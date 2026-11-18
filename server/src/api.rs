@@ -4,7 +4,7 @@ use std::convert::Infallible;
 
 use axum::{
     body::Bytes,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{
         sse::{Event, KeepAlive, Sse},
@@ -24,7 +24,7 @@ use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use crate::{
     auth::Auth,
     error::{ApiError, ApiResult},
-    push, whatsapp, AppState,
+    push, whatsapp, AppState, Live,
 };
 
 const MAX_FILE: usize = 15 * 1024 * 1024;
@@ -60,11 +60,40 @@ fn valid_id(id: &str) -> ApiResult<()> {
 
 // ---------------------------------------------------------------- eventos
 
-/// Los clientes escuchan aquí y recargan cuando otro dispositivo cambia algo
-async fn events(_a: Auth, State(st): State<AppState>) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let stream = BroadcastStream::new(st.events.subscribe())
-        .filter_map(|m| m.ok())
-        .map(|what| Ok(Event::default().event("change").data(what)));
+#[derive(Deserialize)]
+struct EventsQuery {
+    #[serde(default)]
+    client: String,
+}
+
+/// Resta una app de escritorio conectada cuando se cierra su conexión
+struct DesktopGuard(AppState);
+impl Drop for DesktopGuard {
+    fn drop(&mut self) {
+        self.0.desktops.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Los clientes escuchan aquí: recargan cuando otro dispositivo cambia algo y
+/// las apps de escritorio reciben los avisos de las tareas.
+async fn events(
+    _a: Auth,
+    State(st): State<AppState>,
+    Query(q): Query<EventsQuery>,
+) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
+    let desktop = q.client == "desktop";
+    let guard = desktop.then(|| {
+        st.desktops.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        DesktopGuard(st.clone())
+    });
+    let stream = BroadcastStream::new(st.events.subscribe()).filter_map(move |m| {
+        let _keep = &guard;
+        match m.ok()? {
+            Live::Change(what) => Some(Ok(Event::default().event("change").data(what))),
+            Live::Reminder(v) if desktop => Some(Ok(Event::default().event("reminder").data(v.to_string()))),
+            Live::Reminder(_) => None,
+        }
+    });
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
@@ -421,7 +450,11 @@ async fn test_whatsapp(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<V
 // ---------------------------------------------------------------- notificaciones push
 
 async fn push_status(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
-    Ok(Json(json!({ "publicKey": st.vapid.public, "devices": push::subscription_count(&st.db).await? })))
+    Ok(Json(json!({
+        "publicKey": st.vapid.public,
+        "devices": push::subscription_count(&st.db).await?,
+        "desktops": st.desktop_count(),
+    })))
 }
 
 #[derive(Deserialize)]
@@ -474,9 +507,14 @@ async fn push_unsubscribe(_a: Auth, State(st): State<AppState>, Json(u): Json<Un
 
 async fn push_test(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
     let payload = json!({ "title": "Notificación", "body": "✅ Así te llegarán los avisos de tus tareas.", "tag": "test", "url": "/" });
+    let desktops = st.desktop_count();
+    if desktops > 0 {
+        let _ = st.events.send(Live::Reminder(payload.clone()));
+    }
     match push::send_all(&st, payload).await? {
+        (0, _) if desktops > 0 => Ok(Json(json!({ "ok": true, "sent": desktops }))),
         (0, Some(e)) => Err(ApiError::Status(StatusCode::BAD_GATEWAY, format!("No se pudo enviar: {e}"))),
         (0, None) => Err(ApiError::bad_request("No hay ningún dispositivo con notificaciones activadas")),
-        (n, _) => Ok(Json(json!({ "ok": true, "sent": n }))),
+        (n, _) => Ok(Json(json!({ "ok": true, "sent": n + desktops }))),
     }
 }

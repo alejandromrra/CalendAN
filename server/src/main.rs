@@ -30,7 +30,9 @@ pub struct Inner {
     pub http: reqwest::Client,
     pub vapid: push::Vapid,
     /// Avisa a los dispositivos conectados de que algo ha cambiado
-    pub events: broadcast::Sender<&'static str>,
+    pub events: broadcast::Sender<Live>,
+    /// Apps de escritorio conectadas ahora mismo (reciben los avisos en directo)
+    pub desktops: std::sync::atomic::AtomicUsize,
     /// Intentos fallidos de login recientes (freno contra fuerza bruta)
     pub login_failures: std::sync::Mutex<std::collections::VecDeque<std::time::Instant>>,
 }
@@ -44,8 +46,21 @@ impl std::ops::Deref for AppState {
 
 impl AppState {
     pub fn notify(&self, what: &'static str) {
-        let _ = self.events.send(what);
+        let _ = self.events.send(Live::Change(what));
     }
+
+    pub fn desktop_count(&self) -> usize {
+        self.desktops.load(std::sync::atomic::Ordering::Relaxed)
+    }
+}
+
+/// Mensajes que se envían en directo a los dispositivos conectados
+#[derive(Clone)]
+pub enum Live {
+    /// Algo ha cambiado: el cliente recarga tareas o proyectos
+    Change(&'static str),
+    /// Aviso de una tarea (lo muestran las apps de escritorio como notificación nativa)
+    Reminder(serde_json::Value),
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -80,6 +95,7 @@ async fn main() -> anyhow::Result<()> {
         http: reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build()?,
         vapid,
         events: broadcast::channel(64).0,
+        desktops: Default::default(),
         login_failures: Default::default(),
     }));
 
@@ -93,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
         .merge(auth::routes())
         .merge(api::routes())
         .layer(DefaultBodyLimit::max(25 * 1024 * 1024))
+        .layer(cors())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
         .fallback_service(spa);
@@ -103,6 +120,19 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).with_graceful_shutdown(shutdown()).await?;
     Ok(())
+}
+
+/// Las apps de escritorio (Tauri) cargan la interfaz desde su propio origen
+/// y llaman a la API con token: solo se permiten esos orígenes.
+fn cors() -> tower_http::cors::CorsLayer {
+    use axum::http::{header, HeaderValue, Method};
+    let origins = ["tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"]
+        .map(|o| HeaderValue::from_static(o));
+    tower_http::cors::CorsLayer::new()
+        .allow_origin(origins)
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .max_age(std::time::Duration::from_secs(3600))
 }
 
 async fn shutdown() {
