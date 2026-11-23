@@ -58,7 +58,7 @@ fn valid_email(e: &str) -> bool {
 pub async fn bootstrap(db: &sqlx::PgPool) -> anyhow::Result<()> {
     let count: i64 = sqlx::query("SELECT count(*) AS n FROM users").fetch_one(db).await?.get("n");
     if count > 0 {
-        return Ok(());
+        return recover_admin(db).await;
     }
     let password = std::env::var("AN_PASSWORD").unwrap_or_default();
     if password.chars().count() < 8 {
@@ -87,6 +87,27 @@ pub async fn bootstrap(db: &sqlx::PgPool) -> anyhow::Result<()> {
     sqlx::query("DELETE FROM settings WHERE key IN ('whatsapp', 'appearance')").execute(&mut *tx).await?;
     tx.commit().await?;
     tracing::info!("Cuenta de administrador creada: «{email}» (contraseña: la de AN_PASSWORD)");
+    Ok(())
+}
+
+/// Recuperación: con RESET_ADMIN_PASSWORD=true, al arrancar se pone AN_PASSWORD como
+/// contraseña del administrador más antiguo (y se cierran sus sesiones).
+/// Pensado para quitar la variable en cuanto se haya vuelto a entrar.
+async fn recover_admin(db: &sqlx::PgPool) -> anyhow::Result<()> {
+    if std::env::var("RESET_ADMIN_PASSWORD").map(|v| v.trim().eq_ignore_ascii_case("true")).unwrap_or(false) {
+        let password = std::env::var("AN_PASSWORD").unwrap_or_default();
+        if password.chars().count() < 8 {
+            anyhow::bail!("RESET_ADMIN_PASSWORD necesita AN_PASSWORD (mínimo 8 caracteres)");
+        }
+        let row = sqlx::query("SELECT id, email FROM users WHERE is_admin ORDER BY created_at LIMIT 1").fetch_optional(db).await?;
+        if let Some(r) = row {
+            let id: String = r.get("id");
+            let email: String = r.get("email");
+            sqlx::query("UPDATE users SET password_hash = $2 WHERE id = $1").bind(&id).bind(hash_password(&password)?).execute(db).await?;
+            sqlx::query("DELETE FROM sessions WHERE user_id = $1").bind(&id).execute(db).await?;
+            tracing::warn!("Contraseña del administrador «{email}» restablecida a AN_PASSWORD. Quita RESET_ADMIN_PASSWORD de las variables.");
+        }
+    }
     Ok(())
 }
 

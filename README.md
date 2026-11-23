@@ -29,6 +29,12 @@ Los datos viven en tu servidor y se sincronizan al momento entre todos tus dispo
 
 Para actualizar, sube los cambios a GitHub y pulsa *Deploy* (o activa el auto-deploy).
 
+### Si pierdes el acceso a la cuenta de administrador
+
+1. En Easypanel → *Entorno*, comprueba `AN_PASSWORD` y añade `RESET_ADMIN_PASSWORD=true`.
+2. Pulsa *Implementar*: la contraseña del administrador pasa a ser la de `AN_PASSWORD`.
+3. Entra (el email es el de `ADMIN_EMAIL`, o `admin` si no lo definiste) y **quita** `RESET_ADMIN_PASSWORD`.
+
 ## Instalar en el iPhone
 
 1. Abre la URL de la app en **Safari** e inicia sesión.
