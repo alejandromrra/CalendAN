@@ -631,23 +631,30 @@ function UsersSection({ me }) {
 }
 
 function UserMenu({ items }) {
-  const [open, setOpen] = useState(false)
+  // El menú se dibuja con posición fija para que no lo recorte el recuadro de la lista
+  const [pos, setPos] = useState(null)
+  const open = (e) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    const height = items.length * 44 + 12
+    const below = window.innerHeight - r.bottom > height + 8
+    setPos({ right: window.innerWidth - r.right, ...(below ? { top: r.bottom + 4 } : { bottom: window.innerHeight - r.top + 4 }) })
+  }
   return (
-    <div className="relative">
-      <button className="icon-btn h-8 w-8" onClick={() => setOpen(!open)} aria-label="Opciones"><MoreHorizontal size={18} /></button>
-      {open && (
+    <>
+      <button className="icon-btn h-8 w-8" onClick={(e) => (pos ? setPos(null) : open(e))} aria-label="Opciones"><MoreHorizontal size={18} /></button>
+      {pos && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-9 z-40 w-56 animate-pop overflow-hidden rounded-2xl bg-white/95 p-1.5 shadow-lift ring-1 ring-ink-200/70 backdrop-blur-xl dark:bg-ink-850/95 dark:ring-ink-800">
+          <div className="fixed inset-0 z-40" onClick={() => setPos(null)} />
+          <div style={pos} className="fixed z-50 w-56 animate-pop overflow-hidden rounded-2xl bg-white/95 p-1.5 shadow-lift ring-1 ring-ink-200/70 backdrop-blur-xl dark:bg-ink-850/95 dark:ring-ink-800">
             {items.map(({ icon: Icon, label, danger, onClick }) => (
-              <button key={label} onClick={() => { setOpen(false); onClick() }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-ink-100 dark:hover:bg-ink-800 ${danger ? 'text-rose-500' : ''}`}>
+              <button key={label} onClick={() => { setPos(null); onClick() }} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-ink-100 dark:hover:bg-ink-800 ${danger ? 'text-rose-500' : ''}`}>
                 <Icon size={16} className={danger ? '' : 'text-ink-400'} /> {label}
               </button>
             ))}
           </div>
         </>
       )}
-    </div>
+    </>
   )
 }
 
