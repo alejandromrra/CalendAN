@@ -1,4 +1,4 @@
-//! Inicio de sesión de un único usuario (tú) con la contraseña de AN_PASSWORD.
+//! Inicio de sesión con email (o «admin») y contraseña.
 //! Cada dispositivo recibe su propio token de sesión, que se guarda hasheado.
 
 use std::time::{Duration, Instant};
@@ -16,7 +16,10 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
+use sqlx::Row;
+
 use crate::{
+    users,
     error::{ApiError, ApiResult},
     AppState,
 };
@@ -36,13 +39,11 @@ fn hash_token(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
-/// Comparación en tiempo constante
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
-}
 
 #[derive(Deserialize)]
 struct LoginBody {
+    #[serde(default)]
+    email: String,
     password: String,
     #[serde(default)]
     device: String,
@@ -62,19 +63,28 @@ async fn login(State(st): State<AppState>, jar: CookieJar, Json(body): Json<Logi
         }
     }
 
-    let given: [u8; 32] = Sha256::digest(body.password.as_bytes()).into();
-    if !ct_eq(&given, &st.password_hash) {
+    let email = users::normalize_email(&body.email);
+    let row = sqlx::query("SELECT id, password_hash FROM users WHERE email = $1").bind(&email).fetch_optional(&st.db).await?;
+    // Se comprueba la contraseña aunque el usuario no exista, para no dar pistas por el tiempo de respuesta
+    let (user_id, hash) = match row {
+        Some(r) => (Some(r.get::<String, _>("id")), r.get::<String, _>("password_hash")),
+        None => (None, DUMMY_HASH.clone()),
+    };
+    let password = body.password.clone();
+    let valid = tokio::task::spawn_blocking(move || users::verify_password(&password, &hash)).await.unwrap_or(false);
+    let Some(user_id) = user_id.filter(|_| valid) else {
         st.login_failures.lock().unwrap().push_back(Instant::now());
-        tokio::time::sleep(Duration::from_millis(800)).await;
-        return Err(ApiError::Status(axum::http::StatusCode::UNAUTHORIZED, "Contraseña incorrecta".into()));
-    }
+        tokio::time::sleep(Duration::from_millis(600)).await;
+        return Err(ApiError::Status(axum::http::StatusCode::UNAUTHORIZED, "Email o contraseña incorrectos".into()));
+    };
 
     let mut bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut bytes);
     let token = hex::encode(bytes);
-    sqlx::query("INSERT INTO sessions (token_hash, device) VALUES ($1, $2)")
+    sqlx::query("INSERT INTO sessions (token_hash, device, user_id) VALUES ($1, $2, $3)")
         .bind(hash_token(&token))
         .bind(body.device.chars().take(100).collect::<String>())
+        .bind(&user_id)
         .execute(&st.db)
         .await?;
 
@@ -92,19 +102,31 @@ fn time_years(n: i64) -> CookieDuration {
     CookieDuration::days(365 * n)
 }
 
-async fn logout(State(st): State<AppState>, jar: CookieJar, auth: Auth) -> ApiResult<(CookieJar, Json<Value>)> {
-    sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&auth.token_hash).execute(&st.db).await?;
+async fn logout(State(st): State<AppState>, jar: CookieJar, Auth(u): Auth) -> ApiResult<(CookieJar, Json<Value>)> {
+    sqlx::query("DELETE FROM sessions WHERE token_hash = $1").bind(&u.token_hash).execute(&st.db).await?;
     Ok((jar.remove(Cookie::build(COOKIE).path("/")), Json(json!({ "ok": true }))))
 }
 
-async fn me(_auth: Auth) -> Json<Value> {
-    Json(json!({ "ok": true }))
+async fn me(Auth(u): Auth) -> Json<Value> {
+    Json(users::user_json(&u))
+}
+
+/// Hash de una contraseña cualquiera: se usa cuando el email no existe
+static DUMMY_HASH: std::sync::LazyLock<String> =
+    std::sync::LazyLock::new(|| users::hash_password("contraseña-que-no-existe").unwrap_or_default());
+
+#[derive(Clone)]
+pub struct User {
+    pub id: String,
+    pub email: String,
+    pub name: String,
+    pub is_admin: bool,
+    pub token_hash: String,
 }
 
 /// Extractor: exige una sesión válida (cookie, `Authorization: Bearer` o `?token=`)
-pub struct Auth {
-    pub token_hash: String,
-}
+/// y devuelve el usuario al que pertenece.
+pub struct Auth(pub User);
 
 impl FromRequestParts<AppState> for Auth {
     type Rejection = ApiError;
@@ -125,14 +147,21 @@ impl FromRequestParts<AppState> for Auth {
         let token = from_header.or_else(from_cookie).or_else(from_query).ok_or_else(ApiError::unauthorized)?;
 
         let token_hash = hash_token(&token);
-        let found = sqlx::query("UPDATE sessions SET last_seen_at = now() WHERE token_hash = $1")
-            .bind(&token_hash)
-            .execute(&st.db)
-            .await?
-            .rows_affected();
-        if found == 0 {
-            return Err(ApiError::unauthorized());
-        }
-        Ok(Auth { token_hash })
+        let row = sqlx::query(
+            "UPDATE sessions s SET last_seen_at = now() FROM users u
+             WHERE s.token_hash = $1 AND u.id = s.user_id
+             RETURNING u.id, u.email, u.name, u.is_admin",
+        )
+        .bind(&token_hash)
+        .fetch_optional(&st.db)
+        .await?
+        .ok_or_else(ApiError::unauthorized)?;
+        Ok(Auth(User {
+            id: row.get("id"),
+            email: row.get("email"),
+            name: row.get("name"),
+            is_admin: row.get("is_admin"),
+            token_hash,
+        }))
     }
 }

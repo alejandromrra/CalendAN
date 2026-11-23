@@ -52,9 +52,9 @@ export async function setServer(url) {
   return u
 }
 
-export async function login(password) {
+export async function login(email, password) {
   const device = (isDesktop ? 'Escritorio · ' : '') + navigator.userAgent.slice(0, 90)
-  const r = await api('/api/auth/login', { method: 'POST', body: { password, device } })
+  const r = await api('/api/auth/login', { method: 'POST', body: { email, password, device } })
   write(TOKEN_KEY, r.token)
 }
 

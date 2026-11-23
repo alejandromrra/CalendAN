@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ArrowRight, Globe, Lock } from 'lucide-react'
+import { ArrowRight, AtSign, Globe, Lock } from 'lucide-react'
 import { LogoMark } from './Logo'
 import { getServer, isDesktop, login, setServer } from '../lib/api'
 
 export default function LoginView({ onDone }) {
   const [server, setServerInput] = useState(getServer())
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem('an:last-email') || '' } catch { return '' } })
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -15,7 +16,8 @@ export default function LoginView({ onDone }) {
     setError(null)
     try {
       if (isDesktop) setServerInput(await setServer(server))
-      await login(password)
+      await login(email, password)
+      try { localStorage.setItem('an:last-email', email.trim()) } catch {}
       onDone()
     } catch (err) {
       setError(err.message)
@@ -23,7 +25,7 @@ export default function LoginView({ onDone }) {
     }
   }
 
-  const ready = password && (!isDesktop || server.trim())
+  const ready = email.trim() && password && (!isDesktop || server.trim())
 
   return (
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
@@ -32,7 +34,7 @@ export default function LoginView({ onDone }) {
         <LogoMark className="mx-auto mb-6 h-16 w-16 rounded-[20px] shadow-xl shadow-black/25" />
         <h1 className="text-2xl font-semibold tracking-tight">Bienvenido</h1>
         <p className="mb-8 mt-1 text-sm text-ink-400">
-          {isDesktop ? 'Conecta con tu servidor de CalendAN' : 'Introduce tu contraseña para continuar'}
+          {isDesktop ? 'Conecta con tu servidor de CalendAN' : 'Inicia sesión para continuar'}
         </p>
 
         {isDesktop && (
@@ -50,11 +52,28 @@ export default function LoginView({ onDone }) {
           </div>
         )}
 
+        <div className="relative mb-3">
+          <AtSign size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
+          <input
+            type="text"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            autoComplete="username"
+            autoFocus={!isDesktop || !!server ? !email : false}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            className="input h-12 pl-10 text-base"
+            aria-label="Email"
+          />
+        </div>
+
         <div className="relative">
           <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
           <input
             type="password"
-            autoFocus={!isDesktop || !!server}
+            autoFocus={!!email && (!isDesktop || !!server)}
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

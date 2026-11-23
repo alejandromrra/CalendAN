@@ -138,10 +138,13 @@ pub async fn send_one(st: &AppState, endpoint: &str, p256dh: &str, auth: &str, p
     }
 }
 
-/// Envía a todos los dispositivos suscritos. Devuelve cuántos lo recibieron
+/// Envía a todos los dispositivos suscritos de un usuario. Devuelve cuántos lo recibieron
 /// y el primer error (si ninguno lo recibió).
-pub async fn send_all(st: &AppState, payload: serde_json::Value) -> anyhow::Result<(usize, Option<String>)> {
-    let subs = sqlx::query("SELECT endpoint, p256dh, auth FROM push_subscriptions").fetch_all(&st.db).await?;
+pub async fn send_all(st: &AppState, user: &str, payload: serde_json::Value) -> anyhow::Result<(usize, Option<String>)> {
+    let subs = sqlx::query("SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1")
+        .bind(user)
+        .fetch_all(&st.db)
+        .await?;
     let mut ok = 0;
     let mut first_err = None;
     for s in subs {
@@ -161,8 +164,8 @@ pub async fn send_all(st: &AppState, payload: serde_json::Value) -> anyhow::Resu
     Ok((ok, if ok == 0 { first_err } else { None }))
 }
 
-pub async fn subscription_count(db: &sqlx::PgPool) -> anyhow::Result<i64> {
-    Ok(sqlx::query("SELECT count(*) AS n FROM push_subscriptions").fetch_one(db).await?.get("n"))
+pub async fn subscription_count(db: &sqlx::PgPool, user: &str) -> anyhow::Result<i64> {
+    Ok(sqlx::query("SELECT count(*) AS n FROM push_subscriptions WHERE user_id = $1").bind(user).fetch_one(db).await?.get("n"))
 }
 
 #[cfg(test)]

@@ -6,12 +6,12 @@ mod auth;
 mod error;
 mod push;
 mod reminders;
+mod users;
 mod whatsapp;
 
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc};
 
 use axum::{extract::DefaultBodyLimit, routing::get, Router};
-use sha2::{Digest, Sha256};
 use sqlx::postgres::PgPoolOptions;
 use tokio::sync::broadcast;
 use tower_http::{
@@ -24,15 +24,14 @@ pub struct AppState(Arc<Inner>);
 
 pub struct Inner {
     pub db: sqlx::PgPool,
-    pub password_hash: [u8; 32],
     pub secure_cookies: bool,
     pub tz: chrono_tz::Tz,
     pub http: reqwest::Client,
     pub vapid: push::Vapid,
     /// Avisa a los dispositivos conectados de que algo ha cambiado
     pub events: broadcast::Sender<Live>,
-    /// Apps de escritorio conectadas ahora mismo (reciben los avisos en directo)
-    pub desktops: std::sync::atomic::AtomicUsize,
+    /// Apps de escritorio conectadas ahora mismo, por usuario (reciben los avisos en directo)
+    pub desktops: std::sync::Mutex<std::collections::HashMap<String, usize>>,
     /// Intentos fallidos de login recientes (freno contra fuerza bruta)
     pub login_failures: std::sync::Mutex<std::collections::VecDeque<std::time::Instant>>,
 }
@@ -45,22 +44,23 @@ impl std::ops::Deref for AppState {
 }
 
 impl AppState {
-    pub fn notify(&self, what: &'static str) {
-        let _ = self.events.send(Live::Change(what));
+    /// Avisa a los dispositivos de ese usuario de que algo ha cambiado
+    pub fn notify(&self, user: &str, what: &'static str) {
+        let _ = self.events.send(Live::Change(user.to_string(), what));
     }
 
-    pub fn desktop_count(&self) -> usize {
-        self.desktops.load(std::sync::atomic::Ordering::Relaxed)
+    pub fn desktop_count(&self, user: &str) -> usize {
+        self.desktops.lock().unwrap().get(user).copied().unwrap_or(0)
     }
 }
 
 /// Mensajes que se envían en directo a los dispositivos conectados
 #[derive(Clone)]
 pub enum Live {
-    /// Algo ha cambiado: el cliente recarga tareas o proyectos
-    Change(&'static str),
-    /// Aviso de una tarea (lo muestran las apps de escritorio como notificación nativa)
-    Reminder(serde_json::Value),
+    /// Algo ha cambiado (usuario, qué): el cliente recarga tareas o proyectos
+    Change(String, &'static str),
+    /// Aviso de una tarea para un usuario (lo muestran las apps de escritorio)
+    Reminder(String, serde_json::Value),
 }
 
 fn env_or(key: &str, default: &str) -> String {
@@ -75,13 +75,10 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let database_url = env::var("DATABASE_URL").map_err(|_| anyhow::anyhow!("Falta DATABASE_URL"))?;
-    let password = env::var("AN_PASSWORD").unwrap_or_default();
-    if password.len() < 8 {
-        anyhow::bail!("AN_PASSWORD debe tener al menos 8 caracteres");
-    }
-
     let db = PgPoolOptions::new().max_connections(10).connect(&database_url).await?;
     sqlx::migrate!("./migrations").run(&db).await?;
+    // Primera vez: crea la cuenta de administrador y le asigna los datos existentes
+    users::bootstrap(&db).await?;
 
     let tz: chrono_tz::Tz = env_or("TIMEZONE", "Europe/Madrid").parse().map_err(|_| anyhow::anyhow!("TIMEZONE no válida"))?;
 
@@ -89,7 +86,6 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState(Arc::new(Inner {
         db,
-        password_hash: Sha256::digest(password.as_bytes()).into(),
         secure_cookies: env_or("SECURE_COOKIES", "true") != "false",
         tz,
         http: reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build()?,
@@ -107,6 +103,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/api/health", get(|| async { axum::Json(serde_json::json!({ "ok": true })) }))
         .merge(auth::routes())
+        .merge(users::routes())
         .merge(api::routes())
         .layer(DefaultBodyLimit::max(25 * 1024 * 1024))
         .layer(cors())

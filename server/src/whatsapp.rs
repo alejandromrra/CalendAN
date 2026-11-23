@@ -1,8 +1,7 @@
 //! Envío de WhatsApp con CallMeBot (gratis para avisos a tu propio número).
-//! La configuración se guarda desde Ajustes; WHATSAPP_PHONE / CALLMEBOT_APIKEY sirven de respaldo.
+//! Cada usuario configura su número y su apikey desde Ajustes.
 
 use serde_json::{json, Value};
-use sqlx::Row;
 
 use crate::AppState;
 
@@ -24,23 +23,16 @@ pub fn normalize_phone(raw: &str) -> String {
     p
 }
 
-pub async fn config(st: &AppState) -> anyhow::Result<Option<Config>> {
-    let saved = sqlx::query("SELECT value FROM settings WHERE key = 'whatsapp'").fetch_optional(&st.db).await?;
-    let (phone, apikey) = match saved {
-        Some(r) => {
-            let v: Value = r.get("value");
-            (v["phone"].as_str().unwrap_or_default().to_string(), v["apikey"].as_str().unwrap_or_default().to_string())
-        }
-        None => (
-            normalize_phone(&std::env::var("WHATSAPP_PHONE").unwrap_or_default()),
-            std::env::var("CALLMEBOT_APIKEY").unwrap_or_default(),
-        ),
-    };
+/// Número y apikey de CallMeBot de un usuario (se configuran en Ajustes)
+pub async fn config(st: &AppState, user: &str) -> anyhow::Result<Option<Config>> {
+    let v = crate::users::get_setting(&st.db, user, "whatsapp").await?.unwrap_or(Value::Null);
+    let phone = v["phone"].as_str().unwrap_or_default().to_string();
+    let apikey = v["apikey"].as_str().unwrap_or_default().to_string();
     Ok((!phone.is_empty() && !apikey.is_empty()).then_some(Config { phone, apikey }))
 }
 
-pub async fn status(st: &AppState) -> anyhow::Result<Value> {
-    Ok(match config(st).await? {
+pub async fn status(st: &AppState, user: &str) -> anyhow::Result<Value> {
+    Ok(match config(st, user).await? {
         Some(c) => {
             let n = c.phone.len();
             let masked = format!("{}•••{}", &c.phone[..3.min(n)], &c.phone[n.saturating_sub(3)..]);
@@ -50,8 +42,8 @@ pub async fn status(st: &AppState) -> anyhow::Result<Value> {
     })
 }
 
-pub async fn send(st: &AppState, text: &str) -> anyhow::Result<()> {
-    let c = config(st).await?.ok_or_else(|| anyhow::anyhow!("WhatsApp no está configurado (Ajustes)"))?;
+pub async fn send(st: &AppState, user: &str, text: &str) -> anyhow::Result<()> {
+    let c = config(st, user).await?.ok_or_else(|| anyhow::anyhow!("WhatsApp no está configurado (Ajustes)"))?;
     let res = st
         .http
         .get(std::env::var("CALLMEBOT_URL").unwrap_or_else(|_| "https://api.callmebot.com/whatsapp.php".into()))

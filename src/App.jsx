@@ -10,24 +10,25 @@ import ProjectsView from './projects/ProjectsView'
 import { api, isDesktop } from './lib/api'
 import { subscribe } from './lib/live'
 import { firstRunSetup, notifyNative } from './lib/desktop'
-import { applyAccent, cachedAccent } from './lib/accent'
+import { DEFAULT_ACCENT, applyAccent, cachedAccent } from './lib/accent'
 import { useLocalState, useProjects, useSession, useTasks, useTheme } from './lib/store'
 
 export default function App() {
   const [theme, toggleTheme, setTheme] = useTheme()
-  const [authed, setAuthed] = useSession()
+  const [user, setUser, refreshUser] = useSession()
 
-  if (authed === null)
+  if (user === undefined)
     return (
       <div className="flex h-[100dvh] items-center justify-center">
         <LogoMark className="h-12 w-12 animate-pulse rounded-[14px]" />
       </div>
     )
-  if (!authed) return <LoginView onDone={() => setAuthed(true)} />
-  return <Shell theme={theme} toggleTheme={toggleTheme} setTheme={setTheme} onLogout={() => setAuthed(false)} />
+  if (!user) return <LoginView onDone={refreshUser} />
+  // key: al cambiar de cuenta se vuelve a montar todo con los datos del nuevo usuario
+  return <Shell key={user.id} user={user} setUser={setUser} theme={theme} toggleTheme={toggleTheme} setTheme={setTheme} onLogout={() => setUser(null)} />
 }
 
-function Shell({ theme, toggleTheme, setTheme, onLogout }) {
+function Shell({ user, setUser, theme, toggleTheme, setTheme, onLogout }) {
   const [view, setView] = useLocalState('an:view', 'calendar')
   const [mode, setMode] = useLocalState('an:calmode', 'week')
   const [cursor, setCursor] = useState(new Date())
@@ -43,7 +44,7 @@ function Shell({ theme, toggleTheme, setTheme, onLogout }) {
   useEffect(() => {
     const load = () =>
       api('/api/settings/appearance')
-        .then((r) => { if (r.accent) { applyAccent(r.accent); setAccentState(r.accent) } })
+        .then((r) => { const a = r.accent || DEFAULT_ACCENT; applyAccent(a); setAccentState(a) })
         .catch(() => {})
     load()
     return subscribe('change', (what) => what === 'settings' && load())
@@ -86,7 +87,7 @@ function Shell({ theme, toggleTheme, setTheme, onLogout }) {
           <CalendarView tasks={tasks} cursor={cursor} setCursor={setCursor} mode={mode} setMode={setMode} onCreate={create} onEdit={setEditing} onToggle={(t) => upsert({ ...t, done: !t.done })} />
         )}
         {view === 'projects' && <ProjectsView key={navKey} {...projects} />}
-        {view === 'settings' && <SettingsView onLogout={onLogout} theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} />}
+        {view === 'settings' && <SettingsView user={user} setUser={setUser} onLogout={onLogout} theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} />}
 
         {syncError && (
           <div className="absolute bottom-20 left-1/2 z-40 flex -translate-x-1/2 animate-pop items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-sm text-white shadow-lift dark:bg-white dark:text-ink-900 md:bottom-6">

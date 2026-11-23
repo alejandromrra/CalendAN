@@ -45,38 +45,44 @@ async fn check(st: &AppState) -> anyhow::Result<()> {
         .execute(&st.db)
         .await?;
 
-    if whatsapp::config(st).await?.is_some() {
-        check_channel(st, Channel::WhatsApp).await?;
-    }
-    if push::subscription_count(&st.db).await? > 0 {
-        check_channel(st, Channel::Push).await?;
-    }
-    // Solo se marca como enviado a escritorio si hay alguna app abierta en ese momento
-    if st.desktop_count() > 0 {
-        check_channel(st, Channel::Desktop).await?;
+    check_channel(st, Channel::WhatsApp, &[]).await?;
+    check_channel(st, Channel::Push, &[]).await?;
+    // Solo se marca como enviado a escritorio si el usuario tiene alguna app abierta en ese momento
+    let desktops: Vec<String> = st.desktops.lock().unwrap().keys().cloned().collect();
+    if !desktops.is_empty() {
+        check_channel(st, Channel::Desktop, &desktops).await?;
     }
     Ok(())
 }
 
-async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
-    let due = sqlx::query(
-        "SELECT t.id, t.title, t.description, t.start_at, t.all_day, t.reminder,
+async fn check_channel(st: &AppState, ch: Channel, desktop_users: &[String]) -> anyhow::Result<()> {
+    // Cada canal solo para los usuarios que lo tienen configurado
+    let channel_filter = match ch {
+        Channel::WhatsApp => "EXISTS (SELECT 1 FROM user_settings s WHERE s.user_id = t.user_id AND s.key = 'whatsapp')",
+        Channel::Push => "EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = t.user_id)",
+        Channel::Desktop => "t.user_id = ANY($3::text[])",
+    };
+    let sql = format!(
+        "SELECT t.id, t.user_id, t.title, t.description, t.start_at, t.all_day, t.reminder,
                 t.start_at - make_interval(mins => t.reminder) AS remind_at
          FROM tasks t
-         WHERE t.reminder IS NOT NULL AND NOT t.done
+         WHERE {channel_filter} AND $3::text[] IS NOT NULL AND t.reminder IS NOT NULL AND NOT t.done
            AND t.start_at - make_interval(mins => t.reminder) <= now()
            AND t.start_at - make_interval(mins => t.reminder) > now() - make_interval(mins => $1)
            AND NOT EXISTS (SELECT 1 FROM reminders_sent r
                            WHERE r.task_id = t.id AND r.channel = $2
-                             AND r.remind_at = t.start_at - make_interval(mins => t.reminder))",
-    )
+                             AND r.remind_at = t.start_at - make_interval(mins => t.reminder))"
+    );
+    let due = sqlx::query(&sql)
     .bind(MAX_LATE_MINUTES as i32)
     .bind(ch.name())
+    .bind(desktop_users)
     .fetch_all(&st.db)
     .await?;
 
     for row in due {
         let id: String = row.get("id");
+        let user: String = row.get("user_id");
         let remind_at: DateTime<Utc> = row.get("remind_at");
         // Se marca antes de enviar para no duplicar si hay varias instancias
         let claimed = sqlx::query(
@@ -101,9 +107,9 @@ async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
             minutes: row.get("reminder"),
         };
         let result = match ch {
-            Channel::WhatsApp => whatsapp::send(st, &whatsapp_message(st, &r)).await,
+            Channel::WhatsApp => whatsapp::send(st, &user, &whatsapp_message(st, &r)).await,
             Channel::Desktop => {
-                let _ = st.events.send(Live::Reminder(json!({
+                let _ = st.events.send(Live::Reminder(user.clone(), json!({
                     "title": "Notificación",
                     "body": push_body(st, &r),
                     "tag": id,
@@ -117,7 +123,7 @@ async fn check_channel(st: &AppState, ch: Channel) -> anyhow::Result<()> {
                     "tag": id,
                     "url": "/",
                 });
-                match push::send_all(st, payload).await? {
+                match push::send_all(st, &user, payload).await? {
                     (0, Some(e)) => Err(anyhow::anyhow!(e)),
                     _ => Ok(()),
                 }

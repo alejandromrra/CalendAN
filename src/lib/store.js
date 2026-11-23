@@ -32,14 +32,15 @@ export function useTheme() {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')), setTheme]
 }
 
-// ¿Hay sesión iniciada? null = comprobando
+// Usuario con sesión iniciada: undefined = comprobando, null = sin sesión
 export function useSession() {
-  const [authed, setAuthed] = useState(null)
+  const [user, setUser] = useState(undefined)
+  const refresh = useCallback(() => api('/api/auth/me').then(setUser).catch(() => setUser(null)), [])
   useEffect(() => {
-    api('/api/auth/me').then(() => setAuthed(true)).catch(() => setAuthed(false))
-    return onUnauthorized(() => setAuthed(false))
-  }, [])
-  return [authed, setAuthed]
+    refresh()
+    return onUnauthorized(() => setUser(null))
+  }, [refresh])
+  return [user, setUser, refresh]
 }
 
 // Escucha los cambios hechos desde otros dispositivos

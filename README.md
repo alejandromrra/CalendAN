@@ -17,12 +17,13 @@ Los datos viven en tu servidor y se sincronizan al momento entre todos tus dispo
    - *Environment*:
      ```
      DATABASE_URL=<la Internal Connection URL del paso 1>
-     AN_PASSWORD=<una contraseña larga para entrar en la app>
+     ADMIN_EMAIL=<tu email (cuenta de administrador)>
+     AN_PASSWORD=<contraseña inicial del administrador>
      TIMEZONE=Europe/Madrid
      ```
    - *Domains*: deja el dominio que te propone Easypanel y pon el puerto **3001**.
    - Pulsa **Deploy**.
-3. Abre la URL, entra con tu contraseña y en **Ajustes**:
+3. Abre la URL, entra con tu email y contraseña y en **Ajustes**:
    - pulsa «Importar al servidor» si tenías datos de la versión anterior en ese navegador,
    - pega tu número y tu apikey de CallMeBot y envía el mensaje de prueba.
 
@@ -72,7 +73,7 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 
 ## Cómo funciona
 
-- **Sesión**: una sola contraseña (`AN_PASSWORD`). Cada dispositivo tiene su propia sesión; 10 intentos fallidos bloquean el login 15 min.
+- **Cuentas**: cada persona entra con email y contraseña y tiene sus propias tareas, proyectos, imágenes, avisos y color. No hay registro público: el administrador crea las cuentas en *Ajustes → Usuarios*. La primera vez que arranca, el servidor crea el administrador con `ADMIN_EMAIL` (por defecto `admin`) y `AN_PASSWORD`, y le asigna los datos que ya hubiera. Contraseñas con Argon2; 10 intentos fallidos bloquean el login 15 min.
 - **Sincronización**: cada cambio se guarda en Postgres y el servidor avisa al resto de dispositivos (Server-Sent Events), que se actualizan solos.
 - **Avisos**: cada 30 s el servidor busca tareas cuyo aviso toca y envía el WhatsApp una sola vez. Si el servidor estuvo apagado, los avisos con más de 1 h de retraso se descartan.
 - **Notificaciones push**: Web Push estándar (VAPID + cifrado aes128gcm) implementado en Rust; las claves se generan solas la primera vez. Opcional: `VAPID_SUBJECT=mailto:tu@correo`.
@@ -84,6 +85,10 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 | Método | Ruta | |
 |---|---|---|
 | POST | `/api/auth/login` · `/api/auth/logout` | Sesión (cookie y token `Bearer`) |
+| GET | `/api/auth/me` | Usuario actual |
+| PUT | `/api/account` · `/api/account/password` | Nombre y contraseña propios |
+| GET/POST/DELETE | `/api/users` · `/api/users/{id}` · `/api/users/{id}/password` | Gestión de cuentas (solo admin) |
+| GET/PUT | `/api/settings/appearance` | Color principal |
 | GET/PUT/DELETE | `/api/tasks` · `/api/tasks/{id}` | Tareas |
 | GET/PUT/DELETE | `/api/projects` · `/api/projects/{id}` | Proyectos con sus elementos |
 | POST/GET | `/api/files` · `/api/files/{id}` | Imágenes |
