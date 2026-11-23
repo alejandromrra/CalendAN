@@ -6,17 +6,10 @@ export default {
     extend: {
       colors: {
         // Color corporativo AN — índigo eléctrico
+        // Color principal editable: los valores vienen de variables CSS (src/lib/accent.js)
         brand: {
-          50: '#eef0ff',
-          100: '#e0e3ff',
-          200: '#c6cbff',
-          300: '#a3a8ff',
-          400: '#7f7cfb',
-          500: '#635bf5',
-          600: '#5340e9',
-          700: '#4632cd',
-          800: '#3a2ba6',
-          900: '#322a83',
+          ...Object.fromEntries([50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map((k) => [k, `rgb(var(--brand-${k}) / <alpha-value>)`])),
+          fg: 'rgb(var(--brand-fg) / <alpha-value>)',
         },
         ink: {
           50: '#f7f7f8',

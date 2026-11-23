@@ -27,7 +27,7 @@ export default function ProjectsView({ projects, upsert, remove }) {
           <p className="hidden text-sm text-ink-400 sm:block">Ideas, diseños y apps en marcha.</p>
         </div>
         <button
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-md shadow-brand-500/30 active:scale-95 sm:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-brand-fg shadow-md shadow-brand-500/30 active:scale-95 sm:hidden"
           onClick={() => setCreating(true)}
           aria-label="Nuevo proyecto"
         >

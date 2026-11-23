@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-50: 239 239 254; --brand-100: 231 230 253; --brand-200: 208 206 252; --brand-300: 178 174 250;
+    --brand-400: 133 126 247; --brand-500: 99 91 245; --brand-600: 87 80 216; --brand-700: 73 67 181;
+    --brand-800: 59 55 147; --brand-900: 45 41 110; --brand-fg: 255 255 255;
+  }
   html { -webkit-font-smoothing: antialiased; }
   body { @apply bg-ink-50 text-ink-900 dark:bg-ink-950 dark:text-ink-100; font-feature-settings: 'cv11', 'ss01'; }
   ::selection { @apply bg-brand-500/25; }
@@ -11,7 +16,7 @@
 
 @layer components {
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 h-9 text-sm font-medium transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none; }
-  .btn-primary { @apply btn bg-brand-500 text-white hover:bg-brand-600 shadow-sm shadow-brand-500/30; }
+  .btn-primary { @apply btn bg-brand-500 text-brand-fg hover:bg-brand-600 shadow-sm shadow-brand-500/30; }
   .btn-ghost { @apply btn text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800; }
   .btn-outline { @apply btn border border-ink-200 bg-white hover:bg-ink-50 dark:border-ink-700 dark:bg-ink-900 dark:hover:bg-ink-800; }
   .icon-btn { @apply inline-flex h-9 w-9 items-center justify-center rounded-xl text-ink-500 transition hover:bg-ink-100 hover:text-ink-900 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100; }

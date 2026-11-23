@@ -13,7 +13,7 @@ export default function Sidebar({ view, setView, theme, toggleTheme, children })
       {/* Escritorio */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-200/70 bg-white/60 px-4 py-5 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/40 md:flex">
         <div className="mb-8 flex items-center gap-3 px-2">
-          <LogoMark className="h-9 w-9 shadow-md shadow-brand-500/30 rounded-[11px]" />
+          <LogoMark className="h-9 w-9 rounded-[11px] shadow-md shadow-black/20" />
           <div className="leading-tight">
             <div className="text-[15px] font-semibold tracking-tight">CalendAN</div>
             <div className="text-xs text-ink-400">Calendario & Proyectos</div>

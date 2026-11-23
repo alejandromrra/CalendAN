@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Bell, CheckCircle2, Moon, Sun, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
+import { Bell, Check, CheckCircle2, Moon, Pipette, Sun, CircleAlert, CloudUpload, LogOut, MessageCircle, Send, Share, SquarePlus } from 'lucide-react'
 import { LogoMark } from './Logo'
 import { api, getServer, isDesktop, logout } from '../lib/api'
 import { autostartEnabled, canNotify, setAutostart } from '../lib/desktop'
+import { PRESETS } from '../lib/accent'
 import { importLegacyData, localLegacyData } from '../lib/store'
 import { disablePush, enablePush, pushState } from '../lib/push'
 
-export default function SettingsView({ onLogout, theme, setTheme }) {
+export default function SettingsView({ onLogout, theme, setTheme, accent, setAccent }) {
   const [wa, setWa] = useState(null)
   const [form, setForm] = useState({ phone: '', apikey: '' })
   const [saving, setSaving] = useState(null)
@@ -45,18 +46,53 @@ export default function SettingsView({ onLogout, theme, setTheme }) {
       <div className="max-w-2xl space-y-6">
         <LegacyImport />
 
-        <section className="card flex items-center justify-between gap-4 p-5 md:hidden">
-          <span className="font-semibold tracking-tight">Apariencia</span>
-          <div className="grid grid-cols-2 rounded-xl bg-ink-100 p-0.5 dark:bg-ink-800">
-            {[['light', 'Claro', Sun], ['dark', 'Oscuro', Moon]].map(([k, l, Icon]) => (
+        <section className="card p-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-semibold tracking-tight">Apariencia</h2>
+              <p className="text-sm text-ink-400">Se aplica en todos tus dispositivos.</p>
+            </div>
+            <div className="grid grid-cols-2 rounded-xl bg-ink-100 p-0.5 dark:bg-ink-800">
+              {[['light', 'Claro', Sun], ['dark', 'Oscuro', Moon]].map(([k, l, Icon]) => (
+                <button
+                  key={k}
+                  onClick={() => setTheme(k)}
+                  className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${theme === k ? 'bg-white shadow-sm dark:bg-ink-600' : 'text-ink-500'}`}
+                >
+                  <Icon size={15} /> {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 text-xs font-medium uppercase tracking-wider text-ink-400">Color de la app</div>
+          <div className="mt-3 flex flex-wrap items-center gap-2.5">
+            {PRESETS.map(([name, hex]) => (
               <button
-                key={k}
-                onClick={() => setTheme(k)}
-                className={`flex items-center gap-1.5 rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${theme === k ? 'bg-white shadow-sm dark:bg-ink-600' : 'text-ink-500'}`}
+                key={hex}
+                title={name}
+                aria-label={name}
+                onClick={() => setAccent(hex)}
+                className={`flex h-9 w-9 items-center justify-center rounded-full ring-offset-2 ring-offset-white transition dark:ring-offset-ink-900 ${accent === hex ? 'ring-2 ring-ink-900 dark:ring-white' : 'hover:scale-110'}`}
+                style={{ background: hex }}
               >
-                <Icon size={15} /> {l}
+                {accent === hex && <Check size={16} className="text-white" strokeWidth={3} />}
               </button>
             ))}
+            <label
+              title="Personalizado"
+              className={`relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full ring-offset-2 ring-offset-white transition dark:ring-offset-ink-900 ${PRESETS.some(([, h]) => h === accent) ? 'hover:scale-110' : 'ring-2 ring-ink-900 dark:ring-white'}`}
+              style={{ background: PRESETS.some(([, h]) => h === accent) ? 'conic-gradient(#f43f5e, #f59e0b, #22c55e, #0ea5e9, #6366f1, #d946ef, #f43f5e)' : accent }}
+            >
+              <Pipette size={15} className="text-white drop-shadow" />
+              <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Color personalizado" />
+            </label>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-3 rounded-xl bg-ink-50 p-3 dark:bg-ink-800/50">
+            <span className="text-xs text-ink-400">Vista previa</span>
+            <button className="btn-primary h-8 text-xs">Botón</button>
+            <span className="rounded-full bg-brand-500/10 px-2.5 py-1 text-xs font-medium text-brand-600 dark:text-brand-300">Etiqueta</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-brand-fg">23</span>
           </div>
         </section>
 

@@ -122,7 +122,7 @@ function MonthGrid({ cursor, tasks, onCreate, onEdit, onPickDay }) {
               <button
                 onClick={(e) => { e.stopPropagation(); onPickDay(d) }}
                 className={`mb-1 ml-0.5 flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium transition ${
-                  isToday(d) ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/40' : out ? 'text-ink-300 dark:text-ink-600' : 'text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-700'
+                  isToday(d) ? 'bg-brand-500 text-brand-fg shadow-sm shadow-brand-500/40' : out ? 'text-ink-300 dark:text-ink-600' : 'text-ink-600 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-700'
                 }`}
               >
                 {format(d, 'd')}
@@ -210,7 +210,7 @@ export function TimeGrid({ days, tasks, onCreate, onEdit, hideHeader = false, sc
         {days.map((d) => (
           <div key={d} className="flex flex-col items-center gap-0.5 py-2.5">
             <span className="text-[11px] font-medium uppercase tracking-wider text-ink-400">{format(d, 'EEE', { locale: es })}</span>
-            <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold ${isToday(d) ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/40' : ''}`}>
+            <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold ${isToday(d) ? 'bg-brand-500 text-brand-fg shadow-sm shadow-brand-500/40' : ''}`}>
               {format(d, 'd')}
             </span>
           </div>
@@ -315,7 +315,7 @@ export function MiniCalendar({ cursor, setCursor, tasks }) {
               key={d}
               onClick={() => setCursor(d)}
               className={`relative mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[11px] transition ${
-                sel ? 'bg-brand-500 font-semibold text-white' : isToday(d) ? 'font-semibold text-brand-500' : isSameMonth(d, month) ? 'text-ink-700 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800' : 'text-ink-300 dark:text-ink-600'
+                sel ? 'bg-brand-500 font-semibold text-brand-fg' : isToday(d) ? 'font-semibold text-brand-500' : isSameMonth(d, month) ? 'text-ink-700 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800' : 'text-ink-300 dark:text-ink-600'
               }`}
             >
               {format(d, 'd')}

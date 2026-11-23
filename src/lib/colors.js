@@ -1,6 +1,13 @@
+import { accentHex, accentHex2 } from './accent'
+
 // Paleta para tareas y carpetas. "brand" es el color corporativo.
 export const COLORS = {
-  brand: { dot: 'bg-brand-500', soft: 'bg-brand-500/10 text-brand-700 dark:text-brand-300', bar: 'border-brand-500', hex: '#635bf5', hex2: '#8b85ff' },
+  // «brand» sigue al color principal elegido en Ajustes
+  brand: {
+    dot: 'bg-brand-500', soft: 'bg-brand-500/10 text-brand-700 dark:text-brand-300', bar: 'border-brand-500',
+    get hex() { return accentHex() },
+    get hex2() { return accentHex2() },
+  },
   sky: { dot: 'bg-sky-500', soft: 'bg-sky-500/10 text-sky-700 dark:text-sky-300', bar: 'border-sky-500', hex: '#0ea5e9', hex2: '#5ccbf7' },
   emerald: { dot: 'bg-emerald-500', soft: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', bar: 'border-emerald-500', hex: '#10b981', hex2: '#5ad8ab' },
   amber: { dot: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-700 dark:text-amber-300', bar: 'border-amber-500', hex: '#f59e0b', hex2: '#fbc65a' },

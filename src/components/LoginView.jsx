@@ -29,7 +29,7 @@ export default function LoginView({ onDone }) {
     <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden px-6">
       <div className="pointer-events-none absolute -top-40 left-1/2 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-brand-500/20 blur-3xl" />
       <form onSubmit={submit} className="relative w-full max-w-sm animate-pop text-center">
-        <LogoMark className="mx-auto mb-6 h-16 w-16 rounded-[20px] shadow-xl shadow-brand-500/30" />
+        <LogoMark className="mx-auto mb-6 h-16 w-16 rounded-[20px] shadow-xl shadow-black/25" />
         <h1 className="text-2xl font-semibold tracking-tight">Bienvenido</h1>
         <p className="mb-8 mt-1 text-sm text-ink-400">
           {isDesktop ? 'Conecta con tu servidor de CalendAN' : 'Introduce tu contraseña para continuar'}
@@ -63,7 +63,7 @@ export default function LoginView({ onDone }) {
           />
           <button
             disabled={!ready || loading}
-            className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-brand-500 text-white transition hover:bg-brand-600 disabled:opacity-40"
+            className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-brand-500 text-brand-fg transition hover:bg-brand-600 disabled:opacity-40"
             aria-label="Entrar"
           >
             <ArrowRight size={17} className={loading ? 'animate-pulse' : ''} />

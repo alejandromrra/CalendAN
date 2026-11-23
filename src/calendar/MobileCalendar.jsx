@@ -58,7 +58,7 @@ export default function MobileCalendar({ tasks, cursor, setCursor, onCreate, onE
       <button
         onClick={newAt}
         aria-label="Nueva tarea"
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+76px)] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-xl shadow-brand-500/40 transition active:scale-95"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+76px)] right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-brand-fg shadow-xl shadow-brand-500/40 transition active:scale-95"
       >
         <Plus size={26} strokeWidth={2.2} />
       </button>
@@ -104,7 +104,7 @@ function DayView({ tasks, cursor, setCursor, onCreate, onEdit }) {
               </span>
               <span
                 className={`flex h-9 w-9 items-center justify-center rounded-full text-[17px] transition ${
-                  sel ? 'bg-brand-500 font-semibold text-white shadow-md shadow-brand-500/30' : isToday(d) ? 'font-semibold text-brand-500' : ''
+                  sel ? 'bg-brand-500 font-semibold text-brand-fg shadow-md shadow-brand-500/30' : isToday(d) ? 'font-semibold text-brand-500' : ''
                 }`}
               >
                 {format(d, 'd')}
@@ -169,7 +169,7 @@ function MonthView({ tasks, cursor, setCursor, onEdit, onToggle }) {
               <button key={d} onClick={() => setCursor(d)} className="flex h-12 flex-col items-center gap-0.5 pt-1">
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-[16px] ${
-                    sel ? 'bg-brand-500 font-semibold text-white' : isToday(d) ? 'font-semibold text-brand-500' : out ? 'text-ink-300 dark:text-ink-700' : ''
+                    sel ? 'bg-brand-500 font-semibold text-brand-fg' : isToday(d) ? 'font-semibold text-brand-500' : out ? 'text-ink-300 dark:text-ink-700' : ''
                   }`}
                 >
                   {format(d, 'd')}

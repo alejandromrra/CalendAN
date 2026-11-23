@@ -10,6 +10,7 @@ import ProjectsView from './projects/ProjectsView'
 import { api, isDesktop } from './lib/api'
 import { subscribe } from './lib/live'
 import { firstRunSetup, notifyNative } from './lib/desktop'
+import { applyAccent, cachedAccent } from './lib/accent'
 import { useLocalState, useProjects, useSession, useTasks, useTheme } from './lib/store'
 
 export default function App() {
@@ -36,6 +37,22 @@ function Shell({ theme, toggleTheme, setTheme, onLogout }) {
   const { tasks, upsert, remove, error: taskError } = useTasks()
   const projects = useProjects()
   const [whatsappReady, setWhatsappReady] = useState(true)
+  const [accent, setAccentState] = useState(cachedAccent)
+
+  // Color principal: se guarda en el servidor y se sincroniza entre dispositivos
+  useEffect(() => {
+    const load = () =>
+      api('/api/settings/appearance')
+        .then((r) => { if (r.accent) { applyAccent(r.accent); setAccentState(r.accent) } })
+        .catch(() => {})
+    load()
+    return subscribe('change', (what) => what === 'settings' && load())
+  }, [])
+  const setAccent = (hex) => {
+    applyAccent(hex)
+    setAccentState(hex)
+    api('/api/settings/appearance', { method: 'PUT', body: { accent: hex } }).catch(() => {})
+  }
 
   // App de escritorio: los avisos llegan en directo y se muestran como notificación nativa
   useEffect(() => {
@@ -69,7 +86,7 @@ function Shell({ theme, toggleTheme, setTheme, onLogout }) {
           <CalendarView tasks={tasks} cursor={cursor} setCursor={setCursor} mode={mode} setMode={setMode} onCreate={create} onEdit={setEditing} onToggle={(t) => upsert({ ...t, done: !t.done })} />
         )}
         {view === 'projects' && <ProjectsView key={navKey} {...projects} />}
-        {view === 'settings' && <SettingsView onLogout={onLogout} theme={theme} setTheme={setTheme} />}
+        {view === 'settings' && <SettingsView onLogout={onLogout} theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} />}
 
         {syncError && (
           <div className="absolute bottom-20 left-1/2 z-40 flex -translate-x-1/2 animate-pop items-center gap-2 rounded-full bg-ink-900 px-4 py-2 text-sm text-white shadow-lift dark:bg-white dark:text-ink-900 md:bottom-6">

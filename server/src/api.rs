@@ -40,6 +40,7 @@ pub fn routes() -> Router<AppState> {
         .route("/api/files/{id}", get(get_file))
         .route("/api/settings/whatsapp", get(get_whatsapp).put(put_whatsapp))
         .route("/api/whatsapp/test", post(test_whatsapp))
+        .route("/api/settings/appearance", get(get_appearance).put(put_appearance))
         .route("/api/push", get(push_status).post(push_subscribe).delete(push_unsubscribe))
         .route("/api/push/test", post(push_test))
 }
@@ -517,4 +518,31 @@ async fn push_test(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value
         (0, None) => Err(ApiError::bad_request("No hay ningún dispositivo con notificaciones activadas")),
         (n, _) => Ok(Json(json!({ "ok": true, "sent": n + desktops }))),
     }
+}
+
+// ---------------------------------------------------------------- apariencia
+
+/// Color principal de la app, compartido entre todos tus dispositivos
+async fn get_appearance(_a: Auth, State(st): State<AppState>) -> ApiResult<Json<Value>> {
+    let row = sqlx::query("SELECT value FROM settings WHERE key = 'appearance'").fetch_optional(&st.db).await?;
+    Ok(Json(row.map(|r| r.get::<Value, _>("value")).unwrap_or_else(|| json!({ "accent": null }))))
+}
+
+#[derive(Deserialize)]
+struct Appearance {
+    accent: String,
+}
+
+async fn put_appearance(_a: Auth, State(st): State<AppState>, Json(b): Json<Appearance>) -> ApiResult<Json<Value>> {
+    let ok = b.accent.len() == 7 && b.accent.starts_with('#') && b.accent[1..].chars().all(|c| c.is_ascii_hexdigit());
+    if !ok {
+        return Err(ApiError::bad_request("Color no válido (formato #rrggbb)"));
+    }
+    let value = json!({ "accent": b.accent.to_lowercase() });
+    sqlx::query("INSERT INTO settings (key, value) VALUES ('appearance', $1) ON CONFLICT (key) DO UPDATE SET value = $1")
+        .bind(&value)
+        .execute(&st.db)
+        .await?;
+    st.notify("settings");
+    Ok(Json(value))
 }

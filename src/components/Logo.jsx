@@ -11,12 +11,14 @@ export function LogoMark({ className = 'h-9 w-9' }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-label="AN">
       <defs>
-        <linearGradient id="an-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7f7cfb" />
-          <stop offset="1" stopColor="#5340e9" />
+        <linearGradient id="an-g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2a2a2d" />
+          <stop offset="1" stopColor="#0a0a0b" />
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="18" fill="url(#an-g)" />
+      {/* Borde sutil para que se distinga sobre fondos oscuros */}
+      <rect x=".5" y=".5" width="63" height="63" rx="17.5" fill="none" stroke="#fff" strokeOpacity=".14" />
       <Glyph />
     </svg>
   )
