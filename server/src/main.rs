@@ -6,6 +6,7 @@ mod auth;
 mod error;
 mod push;
 mod reminders;
+mod todos;
 mod users;
 mod whatsapp;
 
@@ -104,6 +105,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/health", get(|| async { axum::Json(serde_json::json!({ "ok": true })) }))
         .merge(auth::routes())
         .merge(users::routes())
+        .merge(todos::routes())
         .merge(api::routes())
         .layer(DefaultBodyLimit::max(25 * 1024 * 1024))
         .layer(cors())

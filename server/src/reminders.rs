@@ -19,6 +19,9 @@ pub async fn run(st: AppState) {
         if let Err(e) = check(&st).await {
             tracing::error!("recordatorios: {e:#}");
         }
+        if let Err(e) = crate::todos::send_due_digests(&st).await {
+            tracing::error!("resumen diario: {e:#}");
+        }
     }
 }
 

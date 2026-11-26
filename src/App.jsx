@@ -7,11 +7,12 @@ import { LogoMark } from './components/Logo'
 import CalendarView, { MiniCalendar, Upcoming } from './calendar/CalendarView'
 import TaskModal from './calendar/TaskModal'
 import ProjectsView from './projects/ProjectsView'
+import TodosView from './todos/TodosView'
 import { api, isDesktop } from './lib/api'
 import { subscribe } from './lib/live'
 import { firstRunSetup, notifyNative } from './lib/desktop'
 import { DEFAULT_ACCENT, applyAccent, cachedAccent } from './lib/accent'
-import { useLocalState, useProjects, useSession, useTasks, useTheme } from './lib/store'
+import { useLocalState, useProjects, useSession, useTasks, useTheme, useTodos } from './lib/store'
 
 export default function App() {
   const [theme, toggleTheme, setTheme] = useTheme()
@@ -37,6 +38,7 @@ function Shell({ user, setUser, theme, toggleTheme, setTheme, onLogout }) {
   const [editing, setEditing] = useState(null)
   const { tasks, upsert, remove, error: taskError } = useTasks()
   const projects = useProjects()
+  const todos = useTodos()
   const [whatsappReady, setWhatsappReady] = useState(true)
   const [accent, setAccentState] = useState(cachedAccent)
 
@@ -69,7 +71,7 @@ function Shell({ user, setUser, theme, toggleTheme, setTheme, onLogout }) {
   }, [view])
 
   const create = (start) => setEditing({ start: start.toISOString(), end: new Date(start.getTime() + 3600_000).toISOString(), reminder: 0 })
-  const syncError = taskError || projects.error
+  const syncError = taskError || projects.error || todos.error
 
   return (
     <div className="pt-safe flex h-[100dvh] overflow-hidden">
@@ -86,6 +88,7 @@ function Shell({ user, setUser, theme, toggleTheme, setTheme, onLogout }) {
         {view === 'calendar' && (
           <CalendarView tasks={tasks} cursor={cursor} setCursor={setCursor} mode={mode} setMode={setMode} onCreate={create} onEdit={setEditing} onToggle={(t) => upsert({ ...t, done: !t.done })} />
         )}
+        {view === 'todos' && <TodosView {...todos} user={user} />}
         {view === 'projects' && <ProjectsView key={navKey} {...projects} />}
         {view === 'settings' && <SettingsView user={user} setUser={setUser} onLogout={onLogout} theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} />}
 

@@ -86,6 +86,39 @@ export function useTasks() {
   return { tasks, upsert, remove, error }
 }
 
+// Lista de tareas pendientes (sección Tareas)
+export function useTodos() {
+  const [todos, setTodos] = useState(null)
+  const [error, setError] = useState(null)
+
+  const reload = useCallback(() => {
+    api('/api/todos').then((l) => { setTodos(l); setError(null) }).catch((e) => setError(e.message))
+  }, [])
+  useEffect(reload, [reload])
+  useLiveReload('todos', reload)
+
+  const upsert = async (todo) => {
+    const next = { ...todo, createdAt: todo.createdAt || Date.now(), doneAt: todo.done ? todo.doneAt || Date.now() : null }
+    setTodos((list) => [...(list || []).filter((t) => t.id !== todo.id), next])
+    try {
+      const saved = await api(`/api/todos/${todo.id}`, { method: 'PUT', body: next })
+      setTodos((list) => (list || []).map((t) => (t.id === saved.id ? saved : t)))
+    } catch (e) {
+      setError(e.message)
+      reload()
+    }
+  }
+  const remove = async (id) => {
+    setTodos((list) => (list || []).filter((t) => t.id !== id))
+    await api(`/api/todos/${id}`, { method: 'DELETE' }).catch((e) => { setError(e.message); reload() })
+  }
+  const clearDone = async () => {
+    setTodos((list) => (list || []).filter((t) => !t.done))
+    await api('/api/todos', { method: 'DELETE' }).catch((e) => { setError(e.message); reload() })
+  }
+  return { todos, upsert, remove, clearDone, error }
+}
+
 export function useProjects() {
   const [projects, setProjects] = useState([])
   const [error, setError] = useState(null)

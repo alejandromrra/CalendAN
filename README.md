@@ -102,4 +102,6 @@ npm run dev                 # web en http://localhost:5173 + servidor en :3001
 | POST | `/api/whatsapp/test` | Mensaje de prueba |
 | GET/POST/DELETE | `/api/push` | Clave pública y suscripciones push |
 | POST | `/api/push/test` | Notificación de prueba |
+| GET/DELETE · PUT/DELETE | `/api/todos` · `/api/todos/{id}` | Lista de tareas (DELETE en la lista borra las completadas) |
+| GET/PUT · POST | `/api/settings/digest` · `/api/digest/test` | Resumen diario por WhatsApp |
 | GET | `/api/events` | Cambios en tiempo real |

@@ -1,8 +1,9 @@
-import { CalendarDays, FolderClosed, Moon, Settings, Sun } from 'lucide-react'
+import { CalendarDays, ListChecks, FolderClosed, Moon, Settings, Sun } from 'lucide-react'
 import { LogoMark } from './Logo'
 
 const NAV = [
   { id: 'calendar', label: 'Calendario', icon: CalendarDays },
+  { id: 'todos', label: 'Tareas', icon: ListChecks },
   { id: 'projects', label: 'Proyectos', icon: FolderClosed },
   { id: 'settings', label: 'Ajustes', icon: Settings },
 ]
@@ -43,7 +44,7 @@ export default function Sidebar({ view, setView, theme, toggleTheme, children })
       </aside>
 
       {/* Móvil: barra de pestañas estilo iOS */}
-      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-ink-200/60 bg-white/85 pt-1.5 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/85 md:hidden">
+      <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-ink-200/60 bg-white/85 pt-1.5 backdrop-blur-xl dark:border-ink-800 dark:bg-ink-900/85 md:hidden">
         {NAV.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
